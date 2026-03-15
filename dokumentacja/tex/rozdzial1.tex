@@ -1,0 +1,40 @@
+﻿\newpage
+\section{Cel projektu}
+
+Celem projektu jest stworzenie systemu wykrywania obrazów generowanych przez sztuczną inteligencję. System ten będzie wykorzystywał zaawansowane algorytmy uczenia maszynowego do analizy cech wizualnych i identyfikacji obrazów, które zostały wygenerowane przez modele sztucznej inteligencji, takie jak GAN (Generative Adversarial Networks). Projekt ma na celu zwiększenie świadomości na temat możliwości i zagrożeń związanych z generowaniem obrazów przez AI oraz dostarczenie narzędzi do identyfikacji takich obrazów w różnych kontekstach, takich jak media społecznościowe, platformy e-commerce czy systemy bezpieczeństwa.
+
+\subsection{Zakres projektu}
+
+Zakres projektu obejmuje zaprojektowanie oraz weryfikację systemu, który klasyfikuje obrazy na prawdziwe i wygenerowane przez AI. Prace obejmują analizę artefaktów charakterystycznych dla modeli generatywnych (GAN/diffusion), przygotowanie danych oraz ocenę skuteczności w warunkach zbliżonych do rzeczywistych. W ramach projektu przewidziano również wstępny scenariusz wykrywania deepfake na twarzach.
+
+\begin{itemize}
+    \item analiza i identyfikacja typowych artefaktów generatywnych,
+    \item przygotowanie zbioru danych i podział na zbiory treningowy, walidacyjny i testowy,
+    \item implementacja i porównanie wybranych modeli (np. CNN/ViT),
+    \item ocena skuteczności na znanych i nieznanych generatorach,
+    \item wstępny pipeline dla deepfake: detekcja twarzy i klasyfikacja autentyczności,
+    \item analiza ograniczeń, ryzyk i aspektów etycznych.
+\end{itemize}
+
+\subsection{Wymagania funkcjonalne}
+
+\begin{itemize}
+    \item wczytanie danych z ustalonej struktury katalogów (train/val/test),
+    \item konfiguracja parametrów treningu i modelu z pliku konfiguracyjnego,
+    \item preprocessing obrazów (resize, normalizacja, augmentacje),
+    \item trening modelu oraz zapis najlepszego checkpointu,
+    \item ewaluacja modelu i raport metryk (Accuracy, Precision, Recall, F1, ROC-AUC),
+    \item predykcja dla pojedynczego obrazu z poziomem pewności,
+    \item wstępna analiza twarzy (detekcja + klasyfikacja) pod kątem deepfake.
+\end{itemize}
+
+\subsection{Wymagania niefunkcjonalne}
+
+\begin{itemize}
+    \item przenośność - możliwość uruchomienia na Windows/Linux,
+    \item wydajność - wsparcie dla akceleracji GPU oraz sensowny czas trenowania,
+    \item odtwarzalność - zapisywanie konfiguracji i hiperparametrów eksperymentu,
+    \item niezawodność - czytelne komunikaty błędów (brak danych, zła struktura),
+    \item interpretowalność - możliwość analizy błędów i wizualizacji,
+    \item bezpieczeństwo - przetwarzanie danych lokalnie, bez ich publikacji.
+\end{itemize}
