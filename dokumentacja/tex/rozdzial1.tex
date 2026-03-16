@@ -1,19 +1,19 @@
 ﻿\newpage
 \section{Cel projektu}
 
-Celem projektu jest stworzenie systemu wykrywania obrazów generowanych przez sztuczną inteligencję. System ten będzie wykorzystywał zaawansowane algorytmy uczenia maszynowego do analizy cech wizualnych i identyfikacji obrazów, które zostały wygenerowane przez modele sztucznej inteligencji, takie jak GAN (Generative Adversarial Networks). Projekt ma na celu zwiększenie świadomości na temat możliwości i zagrożeń związanych z generowaniem obrazów przez AI oraz dostarczenie narzędzi do identyfikacji takich obrazów w różnych kontekstach, takich jak media społecznościowe, platformy e-commerce czy systemy bezpieczeństwa.
+Celem projektu jest stworzenie systemu wykrywania obrazów generowanych przez sztuczną inteligencję. System ten będzie wykorzystywał zaawansowane algorytmy uczenia maszynowego do analizy cech wizualnych i identyfikacji obrazów, które zostały wygenerowane przez modele sztucznej inteligencji, takie jak klasyczne sieci GAN (Generative Adversarial Networks) oraz współcześnie dominujące modele dyfuzyjne (np. Stable Diffusion, Midjourney). Projekt kładzie szczególny nacisk na obronę przed cyberzagrożeniami. Rozwiązanie to ma na celu identyfikację prób dezinformacji, oszustw tożsamościowych (np. wizualny phishing) oraz potencjalnych manipulacji cyfrowym materiałem dowodowym. Narzędzia te znajdą zastosowanie m.in. w mediach społecznościowych i systemach bezpieczeństwa.
 
 \subsection{Zakres projektu}
 
-Zakres projektu obejmuje zaprojektowanie oraz weryfikację systemu, który klasyfikuje obrazy na prawdziwe i wygenerowane przez AI. Prace obejmują analizę artefaktów charakterystycznych dla modeli generatywnych (GAN/diffusion), przygotowanie danych oraz ocenę skuteczności w warunkach zbliżonych do rzeczywistych. W ramach projektu przewidziano również wstępny scenariusz wykrywania deepfake na twarzach.
+Zakres projektu obejmuje zaprojektowanie oraz weryfikację systemu, który klasyfikuje obrazy na prawdziwe i wygenerowane przez AI. Prace obejmują analizę artefaktów charakterystycznych dla modeli generatywnych, przygotowanie danych oraz ocenę skuteczności w warunkach zbliżonych do rzeczywistych. W ramach projektu przewidziano również wstępny scenariusz wykrywania deepfake na twarzach.
 
 \begin{itemize}
-    \item analiza i identyfikacja typowych artefaktów generatywnych,
+    \item analiza i identyfikacja typowych artefaktów generatywnych (np. nienaturalne renderowanie mikrotekstur, niespójności geometryczne, błędy morfologiczne w detalach czy specyficzne wzorce w domenie częstotliwościowej),
     \item przygotowanie zbioru danych i podział na zbiory treningowy, walidacyjny i testowy,
-    \item implementacja i porównanie wybranych modeli (np. CNN/ViT),
-    \item ocena skuteczności na znanych i nieznanych generatorach,
-    \item wstępny pipeline dla deepfake: detekcja twarzy i klasyfikacja autentyczności,
-    \item analiza ograniczeń, ryzyk i aspektów etycznych.
+    \item implementacja i porównanie wybranych modeli (np. CNN / ViT),
+    \item ocena skuteczności na znanych oraz nowszych, niewidzianych wcześniej generatorach obrazów,
+    \item wstępny pipeline dla deepfake: wydzielanie regionu twarzy (ROI) za pomocą detekcji i jej wąska klasyfikacja pod kątem sztucznych modyfikacji,
+    \item analiza opłacalności systemowej, ryzyka manipulacji oraz aspektów etycznych działania takich modeli.
 \end{itemize}
 
 \subsection{Wymagania funkcjonalne}
@@ -21,20 +21,21 @@ Zakres projektu obejmuje zaprojektowanie oraz weryfikację systemu, który klasy
 \begin{itemize}
     \item wczytanie danych z ustalonej struktury katalogów (train/val/test),
     \item konfiguracja parametrów treningu i modelu z pliku konfiguracyjnego,
-    \item preprocessing obrazów (resize, normalizacja, augmentacje),
+    \item preprocessing obrazów oraz wdrożenie augmentacji uodparniających system na popularne techniki zacierania śladów generatywnych (np. kompresja obrazu, szum, skalowanie dół-góra),
     \item trening modelu oraz zapis najlepszego checkpointu,
     \item ewaluacja modelu i raport metryk (Accuracy, Precision, Recall, F1, ROC-AUC),
-    \item predykcja dla pojedynczego obrazu z poziomem pewności,
-    \item wstępna analiza twarzy (detekcja + klasyfikacja) pod kątem deepfake.
+    \item automatyczne wydzielanie samego rejonu twarzy (Face Cropping) i podsyłanie do dedykowanego ewaluatora autentyczności,
+    \item wizualizacja przesłanek decyzyjnych modelu poprzez generowanie map uczuleń dla wskazanych fragmentów obrazu (mechanizmy eXplainable AI, np. Grad-CAM).
 \end{itemize}
 
 \subsection{Wymagania niefunkcjonalne}
 
 \begin{itemize}
-    \item przenośność - możliwość uruchomienia na Windows/Linux,
-    \item wydajność - wsparcie dla akceleracji GPU oraz sensowny czas trenowania,
+    \item przenośność - możliwość uruchomienia na środowisku Windows/Linux,
+    \item wydajność - wsparcie dla akceleracji GPU i rozsądny czas trenowania dla ograniczonego progu godzinowego,
+    \item niski czas odpowiedzi modelu (latency) na pojedynczej próbce, co jest wymagane w narzędziach pracujących w systemach analizy dużych strumieni danych obrazowych,
     \item odtwarzalność - zapisywanie konfiguracji i hiperparametrów eksperymentu,
-    \item niezawodność - czytelne komunikaty błędów (brak danych, zła struktura),
-    \item interpretowalność - możliwość analizy błędów i wizualizacji,
-    \item bezpieczeństwo - przetwarzanie danych lokalnie, bez ich publikacji.
+    \item niezawodność - czytelne zarządzanie wyjątkami w aplikacjach końcowych (np. błąd z powodu braku twarzy do ekstrakcji na zdjęciu),
+    \item interpretowalność - możliwość naocznej analizy logiki decyzyjnej za pomocą wizualnych map trafień,
+    \item bezpieczeństwo - przetwarzanie krytycznych danych (dowody, twarze) w pełni lokalnie bez połączeń sieciowych, zapewniając ich poufność.
 \end{itemize}
