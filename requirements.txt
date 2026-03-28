@@ -1,8 +1,16 @@
-torch>=2.2.0
-torchvision>=0.17.0
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+# On Windows we want the CUDA-enabled PyTorch build by default.
+torch==2.10.0+cu128; platform_system == "Windows"
+torchvision==0.25.0+cu128; platform_system == "Windows"
+
+# Fallback for other systems where the standard wheels are appropriate.
+torch==2.10.0; platform_system != "Windows"
+torchvision==0.25.0; platform_system != "Windows"
+
 timm>=1.0.3
 opencv-python>=4.9.0
 pillow>=10.0.0
 tqdm>=4.66.0
 PyYAML>=6.0.1
-triton-windows; platform_system == "Windows"
+triton-windows==3.6.0.post26; platform_system == "Windows"

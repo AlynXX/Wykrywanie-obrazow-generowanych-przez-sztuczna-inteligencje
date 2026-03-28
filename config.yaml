@@ -9,11 +9,46 @@ model:
 
 training:
   epochs: 10
-  batch_size: 32
+  batch_size: auto
   learning_rate: 0.0001
-  num_workers: 2
+  num_workers: 0
+  seed: 42
 
 runtime:
-  torch_compile: true
+  torch_compile: false
   compile_mode: default
   compile_backend: inductor
+  amp: true
+  amp_dtype: float16
+
+auto_batch:
+  enabled: true
+  cache_enabled: true
+  cache_path: models/auto_batch_compiled_cache.json
+  cache_max_entries: 200
+  cache_max_age_hours: 168
+  min_batch: 2
+  start_batch: 8
+  max_batch: 128
+  growth_factor: 2
+  safety_factor: 0.9
+  multiple_of: 2
+  max_probes: 9
+  reuse_synthetic_state: true
+  respect_compile: true
+  compile_mode: default
+  compile_backend: inductor
+  compile_dynamic: false
+  fallback_disable_compile_on_error: true
+  probe_amp: true
+  max_vram_utilization: 0.86
+  max_vram_metric: allocated
+  synthetic_warmup_steps: 1
+  synthetic_measure_steps: 1
+
+early_stopping:
+  enabled: true
+  monitor: auto
+  patience: 3
+  min_delta: 0.001
+  start_epoch: 3

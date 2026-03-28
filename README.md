@@ -91,11 +91,13 @@ data/real_vs_ai/
 
 ## Szybki start
 
-1. Instalacja zależności (w tym `triton-windows` na Windows):
+1. Instalacja zależności:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+Na Windows `requirements.txt` instaluje domyslnie build PyTorch z CUDA 12.8, zeby trening mogl korzystac z GPU NVIDIA zamiast wersji CPU-only.
 
 2. Opcjonalnie: podziel dane na `train/val/test`:
 
@@ -103,12 +105,33 @@ pip install -r requirements.txt
 python -m src.split_dataset --input-dir data/raw --output-dir data/real_vs_ai --train 0.7 --val 0.15 --test 0.15 --copy
 ```
 
+Jesli dataset jest juz podzielony na `train/` i `test/`, mozna tylko wydzielic `val/` z `train/` bez kopiowania calego zbioru:
+
+```bash
+python -m src.split_dataset --input-dir data/real_vs_ai --layout pre_split --val-from-train 0.15
+```
+
+Ten wariant przenosi 15% plikow z kazdej klasy w `train/` do `val/` i zostawia `test/` bez zmian. Przy duzych zbiorach danych to bezpieczniejsza opcja niz duplikowanie plikow.
+
 3. Ustaw parametry w `config.yaml`.
 
 4. Trening baseline:
 
 ```bash
 python -m src.train --config config.yaml
+```
+
+W trakcie treningu zapisywane sa checkpointy:
+- `models/last_checkpoint.pt` po kazdej zakonczonej epoce
+- `models/best_model.pt` dla najlepszego modelu
+- `models/interrupted_checkpoint.pt` po przerwaniu treningu przez `Ctrl+C`
+
+Domyslnie wlaczony jest tez `early stopping`, ktory zatrzyma trening, gdy metryka walidacyjna przestanie sie poprawiac przez kilka epok.
+
+Wznowienie treningu:
+
+```bash
+python -m src.train --config config.yaml --resume models/last_checkpoint.pt
 ```
 
 5. Predykcja dla jednego obrazu:
