@@ -25,15 +25,19 @@ def train_one_epoch(
     amp_enabled: bool,
     amp_dtype: torch.dtype,
     scaler: torch.amp.GradScaler | None,
+    channels_last_enabled: bool,
 ):
     model.train()
     total_loss = 0.0
     correct = 0
     total = 0
+    non_blocking = device.type == "cuda"
 
     for images, labels in tqdm(loader, desc="train", leave=False):
-        images = images.to(device)
-        labels = labels.to(device)
+        images = images.to(device, non_blocking=non_blocking)
+        if channels_last_enabled and images.ndim == 4:
+            images = images.contiguous(memory_format=torch.channels_last)
+        labels = labels.to(device, non_blocking=non_blocking)
 
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast(
@@ -164,6 +168,7 @@ def evaluate(
     class_names: list[str],
     amp_enabled: bool,
     amp_dtype: torch.dtype,
+    channels_last_enabled: bool,
 ):
     model.eval()
     total_loss = 0.0
@@ -171,10 +176,13 @@ def evaluate(
     all_labels = []
     all_predictions = []
     all_probabilities = []
+    non_blocking = device.type == "cuda"
 
     for images, labels in tqdm(loader, desc=split_name, leave=False):
-        images = images.to(device)
-        labels = labels.to(device)
+        images = images.to(device, non_blocking=non_blocking)
+        if channels_last_enabled and images.ndim == 4:
+            images = images.contiguous(memory_format=torch.channels_last)
+        labels = labels.to(device, non_blocking=non_blocking)
 
         with torch.autocast(
             device_type=device.type,
@@ -296,22 +304,48 @@ def probe_compiled_model(
     amp_enabled: bool,
     amp_dtype: torch.dtype,
     batch_size: int,
+    channels_last_enabled: bool,
 ):
+    loader_kwargs = build_loader_kwargs(
+        num_workers=0,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=False,
+        prefetch_factor=None,
+    )
     probe_loader = DataLoader(
         dataset,
         batch_size=min(batch_size, 2),
         shuffle=False,
-        num_workers=0,
-        pin_memory=torch.cuda.is_available(),
+        **loader_kwargs,
     )
     images, _ = next(iter(probe_loader))
-    images = images.to(device)
+    images = images.to(device, non_blocking=device.type == "cuda")
+    if channels_last_enabled and images.ndim == 4:
+        images = images.contiguous(memory_format=torch.channels_last)
     with torch.autocast(
         device_type=device.type,
         dtype=amp_dtype,
         enabled=amp_enabled,
     ):
         _ = model(images)
+
+
+def build_loader_kwargs(
+    *,
+    num_workers: int,
+    pin_memory: bool,
+    persistent_workers: bool,
+    prefetch_factor: int | None,
+):
+    loader_kwargs = {
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+    }
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = persistent_workers
+        if prefetch_factor is not None:
+            loader_kwargs["prefetch_factor"] = prefetch_factor
+    return loader_kwargs
 
 
 def parse_args():
@@ -363,12 +397,21 @@ def main():
         value_or_default(args.learning_rate, training_config, "learning_rate", 1e-4)
     )
     num_workers = int(value_or_default(args.num_workers, training_config, "num_workers", 2))
+    persistent_workers = bool(training_config.get("persistent_workers", num_workers > 0))
+    prefetch_factor_value = training_config.get("prefetch_factor", 2)
+    prefetch_factor = (
+        max(1, int(prefetch_factor_value))
+        if prefetch_factor_value is not None and num_workers > 0
+        else None
+    )
     seed = int(value_or_default(args.seed, training_config, "seed", 42))
     torch_compile_enabled = bool(runtime_config.get("torch_compile", False))
     compile_mode = runtime_config.get("compile_mode", "default")
     compile_backend = runtime_config.get("compile_backend", "inductor")
     amp_enabled = bool(runtime_config.get("amp", True))
     amp_dtype = resolve_amp_dtype(runtime_config.get("amp_dtype", "float16"))
+    cudnn_benchmark = bool(runtime_config.get("cudnn_benchmark", True))
+    channels_last_enabled = bool(runtime_config.get("channels_last", True))
 
     if resume_checkpoint is not None:
         model_name = str(resume_checkpoint.get("model_name", model_name))
@@ -380,6 +423,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     if device.type == "cuda":
         torch.set_float32_matmul_precision("high")
+        torch.backends.cudnn.benchmark = cudnn_benchmark
     if torch_compile_enabled:
         configure_compile_caches(output_dir)
 
@@ -422,34 +466,50 @@ def main():
             batch_size = int(batch_size_value)
 
     print(f"Uzywany batch_size={batch_size}")
+    if device.type == "cuda":
+        print(
+            "Loader i runtime: "
+            f"num_workers={num_workers}, "
+            f"persistent_workers={persistent_workers if num_workers > 0 else False}, "
+            f"prefetch_factor={prefetch_factor if num_workers > 0 else 'n/a'}, "
+            f"channels_last={channels_last_enabled}, "
+            f"cudnn_benchmark={cudnn_benchmark}"
+        )
+
+    loader_kwargs = build_loader_kwargs(
+        num_workers=num_workers,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=persistent_workers,
+        prefetch_factor=prefetch_factor,
+    )
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
-        pin_memory=torch.cuda.is_available(),
+        **loader_kwargs,
     )
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=torch.cuda.is_available(),
+        **loader_kwargs,
     )
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=torch.cuda.is_available(),
+        **loader_kwargs,
     )
 
     base_model = create_model(
         model_name=model_name,
         num_classes=len(class_names),
         pretrained=pretrained,
-    ).to(device)
+    )
+    if channels_last_enabled and device.type == "cuda":
+        base_model = base_model.to(memory_format=torch.channels_last)
+    base_model = base_model.to(device)
 
     effective_amp = amp_enabled and device.type == "cuda"
     scaler = torch.amp.GradScaler(
@@ -472,6 +532,7 @@ def main():
                 amp_enabled=effective_amp,
                 amp_dtype=amp_dtype,
                 batch_size=batch_size,
+                channels_last_enabled=channels_last_enabled and device.type == "cuda",
             )
             model = compiled_model
             print(
@@ -544,6 +605,7 @@ def main():
                 amp_enabled=effective_amp,
                 amp_dtype=amp_dtype,
                 scaler=scaler,
+                channels_last_enabled=channels_last_enabled and device.type == "cuda",
             )
             val_loss, val_metrics = evaluate(
                 model=model,
@@ -554,6 +616,7 @@ def main():
                 class_names=class_names,
                 amp_enabled=effective_amp,
                 amp_dtype=amp_dtype,
+                channels_last_enabled=channels_last_enabled and device.type == "cuda",
             )
 
             current_val_score = float(val_metrics.get(selection_metric, val_metrics["accuracy"]))
@@ -689,6 +752,7 @@ def main():
         class_names=class_names,
         amp_enabled=effective_amp,
         amp_dtype=amp_dtype,
+        channels_last_enabled=channels_last_enabled and device.type == "cuda",
     )
 
     save_training_summary(
@@ -706,11 +770,16 @@ def main():
             "runtime": {
                 "device": device.type,
                 "batch_size": batch_size,
+                "num_workers": num_workers,
+                "persistent_workers": persistent_workers if num_workers > 0 else False,
+                "prefetch_factor": prefetch_factor if num_workers > 0 else None,
                 "seed": seed,
                 "torch_compile": torch_compile_enabled,
                 "compile_mode": compile_mode,
                 "amp": effective_amp,
                 "amp_dtype": str(amp_dtype).replace("torch.", ""),
+                "cudnn_benchmark": cudnn_benchmark if device.type == "cuda" else False,
+                "channels_last": channels_last_enabled if device.type == "cuda" else False,
             },
             "early_stopping": {
                 "enabled": early_stopping_enabled,

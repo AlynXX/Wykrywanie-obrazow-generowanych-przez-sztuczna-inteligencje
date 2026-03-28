@@ -121,6 +121,8 @@ Ten wariant przenosi 15% plikow z kazdej klasy w `train/` do `val/` i zostawia `
 python -m src.train --config config.yaml
 ```
 
+Przy treningu na GPU warto zostawic kilka workerow loadera, bo augmentacje obrazu odbywaja sie po stronie CPU. Domyslny config ustawia `num_workers: 6`, `persistent_workers: true`, `prefetch_factor: 3`, a takze `cudnn_benchmark: true` i `channels_last: true`, zeby karta nie czekala bezczynnie na kolejne batch'e przy stalym rozmiarze wejscia.
+
 W trakcie treningu zapisywane sa checkpointy:
 - `models/last_checkpoint.pt` po kazdej zakonczonej epoce
 - `models/best_model.pt` dla najlepszego modelu
@@ -155,3 +157,31 @@ Najważniejsze pola:
 - `runtime.torch_compile`, `runtime.compile_mode`, `runtime.compile_backend`
 
 `src.train` ładuje parametry z `config.yaml`, a opcje CLI (np. `--epochs 20`) mogą je nadpisać.
+
+## Grad-CAM
+
+Przyklad zapisania mapy wyjasniajacej dla pojedynczego obrazu:
+
+```bash
+python -m src.predict --checkpoint models/best_model.pt --image path/to/image.jpg --save-cam reports/gradcam_example.jpg
+```
+
+## Test Odpornosci Na Jakosc
+
+Po treningu mozna sprawdzic, jak model radzi sobie z kompresja JPEG, rozmyciem i downscale:
+
+```bash
+python -m src.robustness_eval --checkpoint models/best_model.pt
+```
+
+Raport zapisze sie domyslnie do `reports/robustness_eval.json`.
+
+## Demo Webowe
+
+Lokalne demo z uploadem obrazu, wynikiem klasyfikacji i mapa Grad-CAM:
+
+```bash
+python -m src.web_demo --checkpoint models/best_model.pt
+```
+
+Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.

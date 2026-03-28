@@ -11,7 +11,9 @@ training:
   epochs: 10
   batch_size: auto
   learning_rate: 0.0001
-  num_workers: 0
+  num_workers: 6
+  persistent_workers: true
+  prefetch_factor: 3
   seed: 42
 
 runtime:
@@ -20,6 +22,8 @@ runtime:
   compile_backend: inductor
   amp: true
   amp_dtype: float16
+  cudnn_benchmark: true
+  channels_last: true
 
 auto_batch:
   enabled: true
@@ -49,6 +53,6 @@ auto_batch:
 early_stopping:
   enabled: true
   monitor: auto
-  patience: 3
+  patience: 5
   min_delta: 0.001
   start_epoch: 3
