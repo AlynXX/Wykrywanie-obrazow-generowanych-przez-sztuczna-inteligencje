@@ -27,6 +27,49 @@ body, .gradio-container {
   font-family: Georgia, "Times New Roman", serif !important;
 }
 
+.gradio-container *,
+.gradio-container label,
+.gradio-container p,
+.gradio-container span,
+.gradio-container h1,
+.gradio-container h2,
+.gradio-container h3,
+.gradio-container h4,
+.gradio-container h5,
+.gradio-container h6 {
+  color: var(--ink) !important;
+}
+
+.gradio-container input,
+.gradio-container textarea,
+.gradio-container select {
+  color: var(--ink) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+.gradio-container button {
+  color: var(--ink) !important;
+}
+
+.gradio-container button.primary,
+.gradio-container button.primary * {
+  color: #fffaf5 !important;
+}
+
+.upload-zone label {
+  color: var(--ink) !important;
+}
+
+.upload-zone [data-testid="image"] *,
+.upload-zone [data-testid="image"] span,
+.upload-zone [data-testid="image"] p,
+.upload-zone [data-testid="image"] button,
+.upload-zone [data-testid="image"] svg {
+  color: #fffaf5 !important;
+  fill: #fffaf5 !important;
+  stroke: #fffaf5 !important;
+}
+
 .app-shell {
   max-width: 1240px;
   margin: 0 auto;
@@ -93,6 +136,11 @@ body, .gradio-container {
 .footnote {
   color: var(--muted);
   font-size: 0.92rem;
+}
+
+.footnote,
+.footnote * {
+  color: var(--muted) !important;
 }
 
 .warning-box {
@@ -211,6 +259,7 @@ def build_interface(bundle: dict):
                             type="pil",
                             label="Obraz wejsciowy",
                             height=420,
+                            elem_classes=["upload-zone"],
                         )
                         cam_alpha = gr.Slider(
                             minimum=0.15,
