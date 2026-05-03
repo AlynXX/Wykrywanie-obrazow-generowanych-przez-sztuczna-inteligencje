@@ -1,6 +1,95 @@
-	\newpage
-\section{Implementacja}		%4
-%Opisać implementacje algorytmu/programu. Pokazać ciekawe fragmenty kodu
-%Opisać powstałe wyniki
+\newpage
+\section{Implementacja}
 
+\subsection{Trening modelu}
 
+Najważniejszym elementem implementacji jest skrypt \texttt{train.py}, który odpowiada za:
+
+\begin{itemize}
+    \item wczytanie konfiguracji z pliku \texttt{config.yaml},
+    \item przygotowanie modelu,
+    \item trening i walidację,
+    \item zapis najlepszych wag,
+    \item wznowienie treningu z checkpointu,
+    \item zapis historii uczenia i podsumowania do pliku JSON.
+\end{itemize}
+
+W trakcie pracy dodano także mechanizmy praktyczne, które okazały się istotne dla dłuższych eksperymentów:
+
+\begin{itemize}
+    \item \texttt{early stopping},
+    \item checkpointy \texttt{best\_model.pt}, \texttt{last\_checkpoint.pt} i \texttt{interrupted\_checkpoint.pt},
+    \item obsługę treningu na GPU z wykorzystaniem \texttt{AMP},
+    \item lepsze ustawienia loadera pod Windows i CUDA.
+\end{itemize}
+
+\subsection{Metryki}
+
+Podczas ewaluacji modelu raportowane są:
+
+\begin{itemize}
+    \item \texttt{Accuracy},
+    \item \texttt{Precision Macro},
+    \item \texttt{Recall Macro},
+    \item \texttt{F1 Macro},
+    \item \texttt{ROC-AUC}.
+\end{itemize}
+
+Metryki te pozwalają ocenić model nie tylko pod względem skuteczności ogólnej, ale też pod kątem jakości rozróżniania klas.
+
+\subsection{Wyniki etapu bazowego}
+
+Wcześniejszy model bazowy osiągnął na zbiorze testowym:
+
+\begin{itemize}
+    \item Accuracy: 0.9339,
+    \item F1 Macro: 0.9339,
+    \item ROC-AUC: 0.9831.
+\end{itemize}
+
+Następnie przeprowadzono drugi trening z mocniejszymi augmentacjami odpornościowymi. Wyniki tego wariantu były następujące:
+
+\begin{itemize}
+    \item Accuracy: 0.9268,
+    \item Precision Macro: 0.9273,
+    \item Recall Macro: 0.9267,
+    \item F1 Macro: 0.9267,
+    \item ROC-AUC: 0.9804.
+\end{itemize}
+
+Wariant ten okazał się minimalnie słabszy na czystym zbiorze testowym, ale lepiej przygotowany do dalszych analiz odporności.
+
+\subsection{Test odporności}
+
+Dla aktualnego modelu przeprowadzono osobny test odporności na spadek jakości obrazu. Sprawdzono między innymi przypadki:
+
+\begin{itemize}
+    \item lekkiej i silnej kompresji JPEG,
+    \item lekkiego i silnego rozmycia,
+    \item lekkiego i silnego downscale,
+    \item profilu mieszanego \texttt{mixed\_quality}.
+\end{itemize}
+
+Najważniejsze obserwacje były następujące:
+
+\begin{itemize}
+    \item lekkie zaburzenia obniżały skuteczność tylko nieznacznie,
+    \item najsilniejszy spadek pojawiał się dla \texttt{jpeg\_extreme},
+    \item przypadki mieszane obniżały skuteczność wyraźnie bardziej niż pojedyncza lekka degradacja.
+\end{itemize}
+
+Pokazuje to, że model jest już w pewnym stopniu odporny na pogorszenie jakości, ale nadal pozostaje wrażliwy na obrazy bardzo mocno skompresowane.
+
+\subsection{Interfejs demonstracyjny}
+
+W celu zwiększenia użyteczności projektu przygotowano lokalne demo webowe w \texttt{Gradio}. Aplikacja umożliwia:
+
+\begin{itemize}
+    \item załadowanie pojedynczego obrazu,
+    \item wyświetlenie predykcji \texttt{real/fake},
+    \item pokazanie pewności modelu,
+    \item wygenerowanie mapy Grad-CAM,
+    \item pokazanie ostrzeżenia przy niskiej jakości obrazu.
+\end{itemize}
+
+Interfejs ten ma charakter demonstracyjny i stanowi przydatne narzędzie do ręcznej analizy zachowania modelu.

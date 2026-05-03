@@ -1,8 +1,80 @@
-	\newpage
-\section{Projektowanie}		%3
-%Napisać z jakich narzędzi będziemy korzystać (kompilator, język programowania), git, biblioteki dodatkowe, itp.
-%Opisać szczegółowe ustawienia kompilatora (jeśli są), powiązania z bibliotekami, itp.
-%Narysować graf, UML, diagram klas, schemat działania algorytmu
+\newpage
+\section{Projektowanie}
 
+\subsection{Architektura rozwiązania}
 
+Projekt został podzielony na kilka logicznych modułów, z których każdy odpowiada za inny fragment eksperymentu:
 
+\begin{itemize}
+    \item \texttt{dataset.py} -- przygotowanie danych, transformacje i augmentacje,
+    \item \texttt{split\_dataset.py} -- przygotowanie struktury \texttt{train/val/test},
+    \item \texttt{model.py} -- tworzenie modelu na bazie biblioteki \texttt{timm},
+    \item \texttt{train.py} -- trening, checkpointy, metryki i early stopping,
+    \item \texttt{predict.py} oraz \texttt{inference.py} -- inferencja dla pojedynczego obrazu,
+    \item \texttt{robustness\_eval.py} -- test odporności na spadek jakości,
+    \item \texttt{web\_demo.py} -- lokalny interfejs demonstracyjny.
+\end{itemize}
+
+Takie rozdzielenie upraszcza dalszy rozwój projektu, ponieważ kolejny etap związany z deepfake twarzy może zostać dopisany jako osobna ścieżka bez przebudowy całego kodu.
+
+\subsection{Dane}
+
+W eksperymentach wykorzystano zbiór danych zorganizowany w klasy \texttt{real} i \texttt{fake}, a następnie podzielony na części:
+
+\begin{itemize}
+    \item zbiór treningowy: 40800 obrazów,
+    \item zbiór walidacyjny: 7200 obrazów,
+    \item zbiór testowy: 12000 obrazów.
+\end{itemize}
+
+Taki podział pozwala oddzielić proces uczenia od strojenia i od finalnej oceny modelu.
+
+\subsection{Model}
+
+Jako model bazowy wybrano architekturę \texttt{ResNet18} dostępną w bibliotece \texttt{timm}. Wybór ten wynikał z kilku powodów:
+
+\begin{itemize}
+    \item model jest lekki obliczeniowo i nadaje się do szybkich eksperymentów,
+    \item posiada sprawdzoną architekturę dla klasyfikacji obrazów,
+    \item można go uruchamiać efektywnie na GPU z wykorzystaniem wag wstępnie wytrenowanych.
+\end{itemize}
+
+Model przyjmuje obrazy przeskalowane do rozmiaru \texttt{224 x 224} i zwraca prawdopodobieństwo dla dwóch klas: \texttt{fake} oraz \texttt{real}.
+
+\subsection{Augmentacje i odporność}
+
+Ze względu na charakter problemu już na etapie projektowania uznano, że zwykły trening na czystych obrazach nie będzie wystarczający. Dlatego zastosowano augmentacje związane z pogorszeniem jakości:
+
+\begin{itemize}
+    \item kompresję JPEG,
+    \item rozmycie Gaussa,
+    \item dodawanie szumu,
+    \item operacje downscale-upscale.
+\end{itemize}
+
+Celem tych modyfikacji było uodpornienie modelu na część przypadków spotykanych w praktyce, zwłaszcza po przejściu obrazów przez komunikatory i serwisy internetowe.
+
+\subsection{Środowisko uruchomieniowe}
+
+Projekt jest rozwijany w Pythonie z wykorzystaniem między innymi bibliotek:
+
+\begin{itemize}
+    \item \texttt{PyTorch},
+    \item \texttt{torchvision},
+    \item \texttt{timm},
+    \item \texttt{Pillow},
+    \item \texttt{OpenCV},
+    \item \texttt{Gradio}.
+\end{itemize}
+
+Trening został zoptymalizowany pod GPU poprzez:
+
+\begin{itemize}
+    \item wykorzystanie \texttt{AMP},
+    \item automatyczny dobór \texttt{batch size},
+    \item \texttt{channels\_last},
+    \item \texttt{cudnn\_benchmark},
+    \item dostrojenie \texttt{DataLoadera}.
+\end{itemize}
+
+Te decyzje projektowe pozwoliły wyraźnie poprawić praktyczne wykorzystanie karty graficznej podczas treningu.

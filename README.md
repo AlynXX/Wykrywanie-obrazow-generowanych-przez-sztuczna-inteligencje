@@ -1,97 +1,103 @@
-# Wykrywanie obrazów generowanych przez AI (Real vs AI)
+# Wykrywanie Obrazow Generowanych Przez AI
 
-Projekt koncentruje się na rozpoznawaniu, czy obraz jest:
-- **prawdziwym zdjęciem** (`real`),
-- **obrazem wygenerowanym przez AI** (`ai-generated`, np. GAN/diffusion),
-- oraz (w osobnym scenariuszu) czy twarz na zdjęciu może być **deepfake**.
+Projekt dotyczy wykrywania, czy obraz jest prawdziwym zdjeciem, czy zostal wygenerowany przez model AI. Obecna wersja repo skupia sie przede wszystkim na baseline `real vs fake`, a etap deepfake twarzy jest przygotowany jako nastepny krok rozwoju.
 
-## Cel projektu
+## Aktualny Stan
 
-Zbudowanie i ocena modelu, który wykrywa obrazy syntetyczne oraz manipulacje twarzy, z naciskiem na:
-- analizę artefaktów modeli generatywnych,
-- odporność na nowe metody generowania,
-- praktyczny kontekst bezpieczeństwa i dezinformacji.
+- Dziala trening klasyfikatora `real` / `fake`.
+- Dziala wznowienie treningu z checkpointu.
+- Dziala Grad-CAM dla pojedynczych obrazow.
+- Dziala lokalne demo webowe w Gradio.
+- Dziala test odpornosci na spadek jakosci obrazu.
+- Etap deepfake twarzy nie jest jeszcze domkniety jako osobny, finalny pipeline.
 
-## Zakres
+## Najwazniejsze Wyniki
 
-1. **Klasyfikacja Real vs AI**  
-   Model binarny klasyfikujący obrazy na `real` i `ai-generated`.
+Najlepszy dotychczasowy baseline na zbiorze testowym:
 
-2. **Analiza artefaktów generatywnych**  
-   Identyfikacja cech takich jak:
-   - nienaturalne tekstury,
-   - niespójne oświetlenie/cienie,
-   - błędy w detalach (włosy, zęby, tło),
-   - wzorce w domenie częstotliwości.
+- `accuracy=0.9339`
+- `f1_macro=0.9339`
+- `roc_auc=0.9831`
 
-3. **Wykrywanie deepfake twarzy**  
-   Pipeline: wykrycie twarzy -> klasyfikacja autentyczności twarzy.
+W nowszym treningu z mocniejszymi augmentacjami odpornosciowymi model uzyskal:
 
-4. **Ocena ryzyka i zagrożeń**  
-   Analiza wpływu obrazów manipulowanych przez AI na:
-   - dezinformację,
-   - oszustwa tożsamościowe,
-   - szantaż i szkody reputacyjne,
-   - wiarygodność materiałów dowodowych.
+- `accuracy=0.9268`
+- `f1_macro=0.9267`
+- `roc_auc=0.9804`
 
-## Proponowany pipeline
+Ten drugi wariant jest nieco slabszy na "czystym" tescie, ale lepiej nadaje sie do badan odpornosci na kompresje i degradacje obrazu.
 
-1. Przygotowanie i balansowanie danych.
-2. Preprocessing (resize, normalizacja, augmentacje).
-3. Trening modelu bazowego CNN/ViT.
-4. Walidacja i test na nieznanych generatorach.
-5. Interpretacja wyników (np. Grad-CAM, analiza błędów).
+## Podsumowanie Eksperymentow
 
-## Metryki
+Dwa najwazniejsze przebiegi treningu na etapie `real vs ai`:
 
-- Accuracy
-- Precision / Recall
-- F1-score
-- ROC-AUC
-- (opcjonalnie) EER dla scenariuszy forensic
+| Wariant | Charakterystyka | Accuracy | F1 Macro | ROC-AUC |
+| --- | --- | ---: | ---: | ---: |
+| Baseline | model ogolny, lzejsze augmentacje | 0.9339 | 0.9339 | 0.9831 |
+| Robust | mocniejsze augmentacje jakosciowe | 0.9268 | 0.9267 | 0.9804 |
 
-## Struktura repozytorium (plan)
+Wniosek praktyczny:
 
-```text
-.
-- data/                 # zbiory danych (lub skrypty ich pobierania)
-- notebooks/            # eksperymenty i analiza
-- src/                  # kod treningu, inferencji, ewaluacji
-- reports/              # wyniki, wykresy, raport końcowy
-- README.md
-```
+- baseline daje lepszy wynik na "czystym" tescie,
+- wariant `robust` lepiej nadaje sie do analizy odpornosci na JPEG, blur i downscale,
+- do pracy raportowej warto zachowac oba wyniki, bo razem dobrze pokazuja trade-off miedzy skutecznoscia i odpornoscia.
 
-## Status
+Syntetyczne podsumowanie etapu znajduje sie tez w `reports/PODSUMOWANIE_REAL_VS_AI.md`.
 
-Repozytorium jest w fazie rozbudowy. Kolejne kroki:
-- [ ] dodać źródła danych i ich opis,
-- [ ] zaimplementować baseline model,
-- [ ] uruchomić eksperymenty i porównać wyniki,
-- [ ] przygotować raport o zagrożeniach i ograniczeniach.
+## Model
 
-## Etyka i ograniczenia
+Obecny baseline korzysta z klasyfikatora obrazu zbudowanego na `timm`.
 
-Systemy wykrywania obrazów AI mogą mieć ograniczoną skuteczność dla nowych generatorów i danych spoza rozkładu treningowego.  
-Wyniki modelu należy traktować jako wsparcie analityczne, a nie niepodważalny dowód.
+- architektura domyslna: `resnet18`
+- wagi startowe: `pretrained=true`
+- rozmiar wejscia: `224x224`
+- klasy wyjsciowe: `fake`, `real`
+- typ zadania: klasyfikacja calego obrazu, nie osobnej twarzy
 
-## Struktura danych
+To oznacza, ze model patrzy na caly kadr i uczy sie globalnych cech obrazu, a nie tylko obszaru twarzy. Z tego powodu dobrze nadaje sie jako pierwszy baseline `real vs ai`, ale nie powinien jeszcze byc traktowany jako docelowy detektor deepfake.
+
+Najwazniejsze cechy treningu:
+
+- loss: `CrossEntropyLoss`
+- optimizer: `AdamW`
+- metryka wyboru najlepszego checkpointu: `ROC-AUC` dla klasy `fake`
+- wspierane wznowienie treningu z checkpointu
+- wspierany `AMP` na GPU
+
+Szczegoly ostatniego treningu sa zapisywane w `models/training_summary.json`.
+
+## Ograniczenia Modelu
+
+Model najlepiej radzi sobie ze zdjeciami fotograficznymi dobrej jakosci. Wyniki moga byc mniej wiarygodne dla:
+
+- zdjec mocno skompresowanych przez komunikatory, np. Messenger,
+- obrazow rozmytych lub o niskiej rozdzielczosci,
+- portretow niskiej jakosci,
+- ilustracji, anime i kadrów animowanych,
+- danych spoza rozkladu treningowego.
+
+Predykcje modelu nalezy traktowac jako wsparcie analityczne, a nie niepodwazalny dowod.
+
+## Struktura Danych
+
+Aktualny pipeline oczekuje danych w strukturze:
 
 ```text
 data/real_vs_ai/
-- train/
-  - ai-generated/
-  - real/
-- val/
-  - ai-generated/
-  - real/
-- test/
-  - ai-generated/
-  - real/
+  train/
+    fake/
+    real/
+  val/
+    fake/
+    real/
+  test/
+    fake/
+    real/
 ```
 
-## Szybki start
+## Szybki Start
 
-1. Instalacja zależności:
+1. Instalacja zaleznosci:
 
 ```bash
 pip install -r requirements.txt
@@ -99,38 +105,19 @@ pip install -r requirements.txt
 
 Na Windows `requirements.txt` instaluje domyslnie build PyTorch z CUDA 12.8, zeby trening mogl korzystac z GPU NVIDIA zamiast wersji CPU-only.
 
-2. Opcjonalnie: podziel dane na `train/val/test`:
-
-```bash
-python -m src.split_dataset --input-dir data/raw --output-dir data/real_vs_ai --train 0.7 --val 0.15 --test 0.15 --copy
-```
-
-Jesli dataset jest juz podzielony na `train/` i `test/`, mozna tylko wydzielic `val/` z `train/` bez kopiowania calego zbioru:
+2. Przygotowanie `val/`, jesli dataset ma tylko `train/` i `test/`:
 
 ```bash
 python -m src.split_dataset --input-dir data/real_vs_ai --layout pre_split --val-from-train 0.15
 ```
 
-Ten wariant przenosi 15% plikow z kazdej klasy w `train/` do `val/` i zostawia `test/` bez zmian. Przy duzych zbiorach danych to bezpieczniejsza opcja niz duplikowanie plikow.
-
-3. Ustaw parametry w `config.yaml`.
-
-4. Trening baseline:
+3. Trening:
 
 ```bash
 python -m src.train --config config.yaml
 ```
 
-Przy treningu na GPU warto zostawic kilka workerow loadera, bo augmentacje obrazu odbywaja sie po stronie CPU. Domyslny config ustawia `num_workers: 6`, `persistent_workers: true`, `prefetch_factor: 3`, a takze `cudnn_benchmark: true` i `channels_last: true`, zeby karta nie czekala bezczynnie na kolejne batch'e przy stalym rozmiarze wejscia.
-
-W trakcie treningu zapisywane sa checkpointy:
-- `models/last_checkpoint.pt` po kazdej zakonczonej epoce
-- `models/best_model.pt` dla najlepszego modelu
-- `models/interrupted_checkpoint.pt` po przerwaniu treningu przez `Ctrl+C`
-
-Domyslnie wlaczony jest tez `early stopping`, ktory zatrzyma trening, gdy metryka walidacyjna przestanie sie poprawiac przez kilka epok.
-
-Wznowienie treningu:
+4. Wznowienie treningu:
 
 ```bash
 python -m src.train --config config.yaml --resume models/last_checkpoint.pt
@@ -142,46 +129,106 @@ python -m src.train --config config.yaml --resume models/last_checkpoint.pt
 python -m src.predict --checkpoint models/best_model.pt --image path/to/image.jpg
 ```
 
-6. Wstępna analiza twarzy (deepfake):
-
-```bash
-python -m src.deepfake_faces --checkpoint models/best_model.pt --image path/to/image.jpg
-```
-
-## Konfiguracja (`config.yaml`)
-
-Najważniejsze pola:
-- `data.data_dir`, `data.output_dir`
-- `model.model_name`, `model.pretrained`, `model.image_size`
-- `training.epochs`, `training.batch_size`, `training.learning_rate`, `training.num_workers`
-- `runtime.torch_compile`, `runtime.compile_mode`, `runtime.compile_backend`
-
-`src.train` ładuje parametry z `config.yaml`, a opcje CLI (np. `--epochs 20`) mogą je nadpisać.
-
-## Grad-CAM
-
-Przyklad zapisania mapy wyjasniajacej dla pojedynczego obrazu:
+6. Zapisanie mapy Grad-CAM:
 
 ```bash
 python -m src.predict --checkpoint models/best_model.pt --image path/to/image.jpg --save-cam reports/gradcam_example.jpg
 ```
 
-## Test Odpornosci Na Jakosc
-
-Po treningu mozna sprawdzic, jak model radzi sobie z kompresja JPEG, rozmyciem i downscale:
+7. Test odpornosci na pogorszenie jakosci obrazu:
 
 ```bash
 python -m src.robustness_eval --checkpoint models/best_model.pt
 ```
 
-Raport zapisze sie domyslnie do `reports/robustness_eval.json`.
-
-## Demo Webowe
-
-Lokalne demo z uploadem obrazu, wynikiem klasyfikacji i mapa Grad-CAM:
+8. Uruchomienie lokalnego demo:
 
 ```bash
 python -m src.web_demo --checkpoint models/best_model.pt
 ```
 
-Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.
+Po uruchomieniu aplikacja jest dostepna lokalnie pod adresem `http://127.0.0.1:7860`.
+
+## Trening I Runtime
+
+Repo ma juz przygotowane mechanizmy, ktore ulatwiaja dluzsze eksperymenty:
+
+- automatyczny dobor `batch_size`,
+- `AMP` na GPU,
+- checkpointy `best_model.pt`, `last_checkpoint.pt`, `interrupted_checkpoint.pt`,
+- `early stopping`,
+- zapis podsumowania do `models/training_summary.json`.
+
+Przy treningu na GPU wazne sa tez ustawienia loadera. Domyslny config ustawia:
+
+- `num_workers: 6`
+- `persistent_workers: true`
+- `prefetch_factor: 3`
+- `cudnn_benchmark: true`
+- `channels_last: true`
+
+To pomaga lepiej wykorzystac GPU przy stalym rozmiarze wejscia `224x224`.
+
+## Interpretacja Wynikow
+
+Demo i CLI zwracaja:
+
+- etykiete `real` lub `fake`,
+- pewnosc predykcji,
+- mape Grad-CAM,
+- ostrzezenie o niskiej jakosci obrazu, jesli obraz jest rozmyty, zbyt maly albo ma bardzo niski kontrast.
+
+Warning o jakosci nie oznacza, ze obraz jest falszywy. Oznacza tylko, ze wynik modelu moze byc mniej stabilny.
+
+## Test Odpornosci
+
+`src.robustness_eval` sprawdza model na kilku profilach degradacji:
+
+- `clean`
+- `jpeg_low`
+- `jpeg_extreme`
+- `blur_light`
+- `blur_strong`
+- `downscale_light`
+- `downscale_strong`
+- `mixed_quality`
+
+Raport zapisuje sie domyslnie do `reports/robustness_eval.json`.
+
+Najwazniejsze obserwacje z aktualnego raportu:
+
+- degradacje lekkie sa znoszone dobrze,
+- najwiekszy spadek daje `jpeg_extreme`,
+- kombinacja kilku degradacji (`mixed_quality`) nadal obniza skutecznosc wyraznie bardziej niz pojedyncze lekkie zaklocenie.
+
+## Struktura Repozytorium
+
+```text
+.
+  config.yaml
+  data/
+  models/
+  reports/
+  src/
+    auto_batch.py
+    dataset.py
+    deepfake_faces.py
+    inference.py
+    model.py
+    predict.py
+    robustness_eval.py
+    split_dataset.py
+    train.py
+    web_demo.py
+  PLAN_PROJEKTU.md
+  README.md
+  requirements.txt
+```
+
+## Co Dalej
+
+Najblizszy plan rozwoju projektu:
+
+- przygotowanie osobnego baseline'u dla twarzy i deepfake,
+- testy na zewnetrznych zestawach twarzy,
+- dalsza analiza bledow i przypadkow spoza rozkladu treningowego.

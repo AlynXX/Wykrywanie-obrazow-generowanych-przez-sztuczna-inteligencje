@@ -1,9 +1,45 @@
 \newpage
-\section{Analiza problemu}		%2
-%Napisać gdzie używa się tego algorytmu
-%Opisać sposób działania programu/algorytmu
-%Napisać spsoób wykorzystania algorytmu po przez wykonanie przykładu (np. mnożenie macierzy - wykonać ręcznie przykład z mnożeniem macierzy pokazujący jak mnoży się macierz ręcznie)
+\section{Analiza problemu}
 
+Rozwój modeli generatywnych spowodował, że obrazy syntetyczne stały się łatwe do wytworzenia i coraz trudniejsze do odróżnienia od zwykłych fotografii. Problem ten ma znaczenie praktyczne w kilku obszarach: dezinformacji, podszywaniu się pod inne osoby, publikowaniu sfałszowanych materiałów wizualnych oraz obniżaniu wiarygodności obrazu jako nośnika informacji. W projekcie przyjęto, że pierwszym krokiem powinno być zbudowanie modelu bazowego wykrywającego obrazy typu \texttt{real} oraz \texttt{fake}.
 
+\subsection{Charakter problemu}
 
+Obrazy generowane przez AI mogą zawierać artefakty trudne do uchwycenia dla człowieka, ale rozpoznawalne przez model uczony na odpowiednio dobranym zbiorze danych. Do takich cech można zaliczyć:
 
+\begin{itemize}
+    \item nienaturalną spójność lub niespójność tekstur,
+    \item charakterystyczne błędy w drobnych detalach,
+    \item zbyt gładkie przejścia tonalne,
+    \item artefakty wynikające z procesu generacji lub późniejszej kompresji obrazu.
+\end{itemize}
+
+W praktyce problem nie sprowadza się jednak tylko do znalezienia jednego modelu o wysokiej skuteczności. Istotne jest również to, czy model pozostaje odporny na pogorszenie jakości obrazu, takie jak rozmycie, kompresja JPEG czy zmniejszenie rozdzielczości. Z punktu widzenia zastosowań praktycznych właśnie te przypadki są szczególnie ważne, ponieważ obrazy rozpowszechniane w mediach społecznościowych lub komunikatorach rzadko zachowują oryginalną jakość.
+
+\subsection{Cel etapu bazowego}
+
+W pierwszym etapie projektu założono budowę rozwiązania, które:
+
+\begin{itemize}
+    \item przyjmuje cały obraz jako wejście,
+    \item klasyfikuje go do jednej z dwóch klas: \texttt{real} lub \texttt{fake},
+    \item zapisuje pełne metryki i checkpointy,
+    \item pozwala na wznowienie treningu,
+    \item umożliwia interpretację decyzji modelu za pomocą Grad-CAM,
+    \item może zostać później rozszerzone o osobny moduł analizy twarzy.
+\end{itemize}
+
+Takie podejście pozwala najpierw zbudować solidny punkt odniesienia, a dopiero później przejść do trudniejszego zagadnienia deepfake twarzy.
+
+\subsection{Najważniejsze trudności}
+
+W trakcie analizy problemu zidentyfikowano kilka kluczowych trudności:
+
+\begin{itemize}
+    \item obrazy spoza rozkładu treningowego mogą być klasyfikowane z dużą pewnością, ale błędnie,
+    \item portrety niskiej jakości i obrazy po kompresji mogą powodować fałszywe alarmy,
+    \item ilustracje i anime nie należą do głównego zakresu modelu fotograficznego,
+    \item skuteczność mierzona na zbiorze testowym nie zawsze przekłada się wprost na zachowanie modelu na obrazach z zewnątrz.
+\end{itemize}
+
+Z tego względu poza samym treningiem konieczne było dodanie testu odporności oraz prostego mechanizmu ostrzegania o niskiej jakości obrazu w interfejsie demonstracyjnym.

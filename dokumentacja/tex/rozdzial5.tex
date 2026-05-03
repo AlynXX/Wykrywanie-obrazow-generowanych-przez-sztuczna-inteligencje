@@ -1,5 +1,38 @@
-	\newpage
-\section{Wnioski}	%5
-%Npisać wnioski końcowe z przeprowadzonego projektu, 
+\newpage
+\section{Wnioski}
 
+Pierwszy etap projektu należy uznać za udany. Udało się zbudować działający system bazowy do klasyfikacji obrazów \texttt{real} oraz \texttt{fake}, a także przygotować pełny pipeline treningowy i ewaluacyjny.
 
+Do najważniejszych osiągnięć należy zaliczyć:
+
+\begin{itemize}
+    \item poprawne uruchomienie treningu na GPU,
+    \item uzyskanie wysokich wyników na zbiorze testowym,
+    \item wdrożenie interpretowalności poprzez Grad-CAM,
+    \item przygotowanie testu odporności na pogorszenie jakości,
+    \item stworzenie lokalnego interfejsu demonstracyjnego.
+\end{itemize}
+
+Jednocześnie analiza praktyczna pokazała, że nawet dobry wynik ilościowy nie oznacza pełnej gotowości modelu do pracy na dowolnych danych. Szczególnie problematyczne okazały się:
+
+\begin{itemize}
+    \item portrety niskiej jakości,
+    \item obrazy po silnej kompresji,
+    \item dane spoza głównego rozkładu treningowego,
+    \item ilustracje i anime.
+\end{itemize}
+
+Oznacza to, że obecny model należy traktować jako mocny baseline dla fotografii, ale nie jako ostateczne rozwiązanie dla wszystkich przypadków wizualnych.
+
+Najbardziej naturalnym dalszym kierunkiem jest rozwinięcie osobnego etapu dotyczącego twarzy i deepfake. Wynika to z faktu, że model ogólny analizujący cały kadr nie jest wystarczająco wyspecjalizowany do trudniejszych przypadków portretowych.
+
+W kolejnym etapie planowane jest:
+
+\begin{enumerate}
+    \item przygotowanie zbioru danych twarzowych,
+    \item dopracowanie modułu \texttt{deepfake\_faces.py},
+    \item trening dedykowanego modelu dla cropów twarzy,
+    \item porównanie wyników modelu globalnego i modelu twarzowego.
+\end{enumerate}
+
+Można zatem stwierdzić, że projekt osiągnął już wyraźny i mierzalny progres: posiada sprawdzony etap bazowy, dokumentację wyników oraz przygotowany grunt pod kolejny, bardziej specjalistyczny moduł.

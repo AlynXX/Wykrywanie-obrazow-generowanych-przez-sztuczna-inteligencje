@@ -1,37 +1,82 @@
-# Plan Implementacji Systemu (Budżet czasowy: ~30h)
+# Plan Projektu
 
-Projekt koncentruje się na budowie systemu do wykrywania obrazów generowanych przez AI oraz manipulacji typu deepfake, w kontekście zabezpieczania aplikacji, weryfikacji tożsamości i wykrywania zagrożeń (np. na przedmiocie "Analiza obrazów z elementami sztucznej inteligencji w detekcji zagrożeń"). Aby zmieścić się w zakładanym czasie 30h, podzieliliśmy proces na zadania z priorytetami `(MVP / Core)` na początek oraz `(Opcjonalne / Ext)` jako usprawnienia, jeśli starczy czasu.
+## Cel
 
----
+Zbudowac system, ktory potrafi odroznic prawdziwe zdjecia od obrazow generowanych przez AI, a w kolejnym etapie rozszerzyc go o analize twarzy i przypadkow typu deepfake.
 
-## Faza 1: Obsługa zestawów danych i preaktywna obrona `[MVP]`
-*Zakładany czas: ~5-6h*
-Zbiory obrazów dla modeli różniących się technologicznie (GAN vs. Modele dyfuzyjne).
-1. `dataset.py`: wdrożenie obsługi struktury danych `Real` / `AI`.
-2. Opracowanie silnego bloku **Augmentacji zacierających**. W prawdziwych zagrożeniach sprawcy wprowadzają modyfikacje minimalizujące widoczność artefaktów. Należy dodać kompresję stratną JPG, szum Gaussa i rozmycie przed podaniem danych na wejście modelu uczącego. Mechanizm uodporni na modyfikacje.
+## Etap 1: Real Vs AI
 
-## Faza 2: Pierwszy detektor: Analiza Pełnych Obrazów (Real vs. AI) `[MVP]`
-*Zakładany czas: ~6-8h*
-Klasyfikator globalnego zdjęcia wycelowany do rozpoznawania zdjęć wyciągniętych ze środowisk takich jak Midjourney/Stable Diffusion (często fałszywe sceny bitew, nagłe sytuacje społeczne itp.).
-1. Użycie pakietu `timm` (lub bezpośrednio torchvision). Trening klasycznego ResNet/EfficientNet na całości.
-2. Logika `train.py`: pętla ucząca, logowanie metryk i zapis wag dla najlepszego modelu. Do tego ewaluacja `Accuracy / ROC-AUC`.
+Status: `w duzej mierze zakonczony`
 
-## Faza 3: Drugi Detektor: Wykrywacz zagrożeń Deepfake `[MVP]`
-*Zakładany czas: ~7-9h*
-Obrona przed zagrożeniami kradzieży tożsamości.
-1. `deepfake_faces.py`: wdrożenie detekcji twarzy (Face Cropping) na wejściu. Może posłużyć model `MTCNN`, `RetinaFace` lub po prostu najszybszy blok Haar Cascades dostępny z `OpenCV`.
-2. Przycięte obrazy (współrzędne tzw. Region Of Interest - ROI) podawane są z powrotem do wyspecjalizowanego klasyfikatora, wyczulonego wyłącznie na błędy renderowania oczu/nosów/włosów. Pomoże to ustrzec algorytm przed zwracaniem uwagi na tło, a skupi na manipulowanym człowieku.
+Zrealizowane elementy:
 
-## Faza 4: Explainable AI i Prezentacja (Podejmowanie Decyzji) `[MVP]`
-*Zakładany czas: ~5h*
-Aspekt bardzo mile widziany na zajęciach: Nie wystarczy pokazać, że "to jest fałszywka". Należy wiedzieć "dlaczego".
-1. `predict.py` zostanie rozszerzone o rysunek powstrzymanej fali manipulacji – użycie mapy aktywacji **Grad-CAM**. Stworzenie kolorowej nałożonej "mapy termicznej" odsłaniającej, na podstawie których obszarów na zdjęciu model powziął swoją dedukcje (wyłapane błędy palców rąk, dziwny kontur żuchwy u deepfake'u itp.).
-2. Podsumowanie statystyczne eksperymentów dla dokumentacji.
+- przygotowanie loadera danych `train / val / test`,
+- skrypt do wydzielania `val` ze struktury `train / test`,
+- trening klasyfikatora obrazu z wykorzystaniem `timm`,
+- zapis checkpointow i wznowienie treningu,
+- `AMP`, auto batch i optymalizacje pod GPU,
+- `early stopping`,
+- Grad-CAM dla pojedynczej predykcji,
+- lokalne demo webowe,
+- benchmark odpornosci na spadek jakosci obrazu.
 
----
+Najwazniejsze obserwacje:
 
-## Etap 5: "Furtki" (Zadania Dodatkowe na sam koniec) `[Opcjonalne / Ext]`
-*Zakładany czas: Pozostałości budżetowe*
-* Zastosowanie detekcji z przestrzeni częstotliwości (np. zjawiska szumu widmowego wygenerowanego przez AI).
-* *Ensembling*: zapięcie dwóch różnych architektur (np. ViT i CNN) w głosowanie większościowe, jeśli skuteczność pojedynczego detektora na nowych danych byłaby zbyt niska.
-* Logowanie eksperymentów w popularnych narzędziach ułatwiających późniejszą obronę decyzji analitycznych (np. MLflow / TensorBoard).
+- model dobrze radzi sobie z normalnymi zdjeciami dobrej jakosci,
+- pogorszenie jakosci obrazu obniza skutecznosc,
+- zdjecia z komunikatorow i portrety niskiej jakosci moga byc mylone z `fake`,
+- anime i ilustracje sa poza glownym zakresem obecnego modelu.
+
+## Etap 2: Analiza Ograniczen
+
+Status: `czesciowo wykonany`
+
+Zrealizowane elementy:
+
+- warning o niskiej jakosci obrazu w demo,
+- test `robustness_eval` dla JPEG, blur i downscale,
+- reczna analiza blednych predykcji na zdjeciach spoza datasetu.
+
+Do dopracowania:
+
+- audyt bardzo duzych lub problematycznych obrazow w datasetcie,
+- bardziej formalny zestaw testow zewnetrznych,
+- ewentualny stan `niepewne` w GUI.
+
+## Etap 3: Deepfake Twarzy
+
+Status: `nastepny glowny krok`
+
+Plan:
+
+1. Przygotowac lub uporzadkowac dataset twarzy.
+2. Dopracowac `src/deepfake_faces.py` pod wykrywanie i cropowanie twarzy.
+3. Wytrenowac osobny baseline dla twarzy `real / fake`.
+4. Sprawdzic, czy model twarzowy rzeczywiscie poprawia wyniki dla portretow.
+
+Powod:
+
+Obecny model ogolny bywa zawodny na portretach niskiej jakosci, wiec etap twarzowy powinien byc osobnym, wyspecjalizowanym modulem zamiast tylko "testem na twarzach" obecnego klasyfikatora.
+
+## Etap 4: Dokumentacja Koncowa
+
+Status: `jeszcze nie finalizowac`
+
+Na teraz warto utrzymywac:
+
+- `README.md` jako dokumentacje techniczna repo,
+- `reports/PODSUMOWANIE_REAL_VS_AI.md` jako robocze podsumowanie etapu wynikowego,
+- ten plan jako aktualny stan projektu.
+
+Pelna dokumentacja w LaTeX powinna powstac dopiero wtedy, gdy:
+
+- etap `real vs ai` bedzie uznany za zamkniety,
+- baseline twarzowy bedzie juz gotowy albo swiadomie odlozony,
+- bedzie jasne, ktore wyniki trafia do finalnego raportu.
+
+## Biezace Priorytety
+
+1. Rozpoczac etap twarzowy / deepfake.
+2. Zebrac pierwsze wyniki na cropach twarzy.
+3. Porownac zachowanie modelu ogolnego i modelu twarzowego.
+4. Dopiero potem wracac do pelnej dokumentacji raportowej.
