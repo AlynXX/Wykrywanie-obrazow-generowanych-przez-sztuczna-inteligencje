@@ -6,9 +6,11 @@ from pathlib import Path
 import gradio as gr
 from PIL import Image
 
+from .error_analysis import run_error_analysis
 from .inference import load_model_bundle, predict_with_grad_cam
 
 DEFAULT_CHECKPOINT = Path("models/best_model.pt")
+DEFAULT_CONFIG = Path("config.yaml")
 
 CUSTOM_CSS = """
 :root {
@@ -218,6 +220,111 @@ def format_result_html(result: dict) -> str:
     """
 
 
+def format_analysis_html(summary: dict) -> str:
+    metrics = summary.get("metrics", {})
+    metric_rows = []
+    for key, label in [
+        ("accuracy", "Accuracy"),
+        ("precision_macro", "Precision macro"),
+        ("recall_macro", "Recall macro"),
+        ("f1_macro", "F1 macro"),
+        ("roc_auc", "ROC-AUC"),
+    ]:
+        if key in metrics:
+            metric_rows.append(
+                f"<tr><td style='padding:6px 12px 6px 0;'>{label}</td>"
+                f"<td style='padding:6px 0;'>{metrics[key]:.4f}</td></tr>"
+            )
+
+    group_rows = []
+    for group_name, count in summary.get("groups", {}).items():
+        group_rows.append(
+            f"<tr><td style='padding:6px 12px 6px 0;'>{group_name}</td>"
+            f"<td style='padding:6px 0;'>{count}</td></tr>"
+        )
+
+    matrix = summary.get("confusion_matrix", {})
+    matrix_html = ""
+    if matrix:
+        class_names = summary.get("class_names", [])
+        header_cells = "".join(
+            f"<th style='padding:6px 10px; text-align:left;'>{class_name}</th>"
+            for class_name in class_names
+        )
+        body_rows = []
+        for actual_name, predicted_counts in matrix.items():
+            value_cells = "".join(
+                f"<td style='padding:6px 10px;'>{predicted_counts.get(class_name, 0)}</td>"
+                for class_name in class_names
+            )
+            body_rows.append(
+                f"<tr><td style='padding:6px 10px; font-weight:700;'>{actual_name}</td>{value_cells}</tr>"
+            )
+        matrix_html = f"""
+        <div style="margin-top:18px;">
+          <div style="font-weight:700; margin-bottom:8px;">Macierz pomylek</div>
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style='padding:6px 10px; text-align:left;'>Rzeczywista \\ Przewidziana</th>
+                {header_cells}
+              </tr>
+            </thead>
+            <tbody>
+              {''.join(body_rows)}
+            </tbody>
+          </table>
+        </div>
+        """
+
+    return f"""
+    <div class="result-box">
+      <div style="font-size:0.92rem; color:#50657f; text-transform:uppercase; letter-spacing:0.08em;">
+        Raport analizy bledow
+      </div>
+      <div style="margin-top:10px; color:#17324d;">
+        Split: <strong>{summary['split']}</strong> |
+        probki: <strong>{summary['num_samples']}</strong> |
+        bledy: <strong>{summary['num_errors']}</strong> |
+        filtr klasy: <strong>{summary.get('filter_class', 'all')}</strong> |
+        sortowanie: <strong>{summary.get('sort_mode', 'default')}</strong>
+      </div>
+      <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+        <div>
+          <div style="font-weight:700; margin-bottom:8px;">Metryki</div>
+          <table style="width:100%; border-collapse:collapse;">{''.join(metric_rows)}</table>
+        </div>
+        <div>
+          <div style="font-weight:700; margin-bottom:8px;">Liczba przypadkow</div>
+          <table style="width:100%; border-collapse:collapse;">{''.join(group_rows)}</table>
+        </div>
+      </div>
+      {matrix_html}
+    </div>
+    """
+
+
+def build_gallery_items(summary: dict, group_name: str):
+    manifest_entries = summary.get("examples_manifest", {}).get(group_name, [])
+    gallery_items = []
+    for entry in manifest_entries:
+        image_path = entry.get("grad_cam_image") or entry.get("copied_image")
+        if not image_path:
+            continue
+        caption = (
+            f"GT: {entry['actual_label']} | Pred: {entry['predicted_label']} | "
+            f"Conf: {entry['confidence'] * 100:.2f}% | "
+            f"Difficulty: {entry.get('difficulty_score', 0.0):.3f}"
+        )
+        gallery_items.append((image_path, caption))
+    return gallery_items
+
+
+def build_gallery_update(summary: dict, group_name: str):
+    items = build_gallery_items(summary, group_name)
+    return gr.update(value=items, visible=bool(items))
+
+
 def build_interface(bundle: dict):
     title_html = f"""
     <div class="hero-card">
@@ -249,51 +356,242 @@ def build_interface(bundle: dict):
             result["input_image"],
         )
 
+    def run_error_analysis_from_ui(
+        split: str,
+        filter_class: str,
+        sort_mode: str,
+        examples_per_group: int,
+        save_grad_cam: bool,
+        config_path_value: str,
+        output_dir_value: str,
+        target_layer_name: str,
+        cam_alpha: float,
+    ):
+        config_path = Path(config_path_value.strip() or str(DEFAULT_CONFIG))
+        output_dir = Path(output_dir_value.strip() or "reports/error_analysis")
+        target_layer = target_layer_name.strip() or None
+
+        try:
+            result = run_error_analysis(
+                checkpoint_path=Path(bundle.get("checkpoint_path", DEFAULT_CHECKPOINT)),
+                config_path=config_path,
+                data_dir=None,
+                split=split,
+                output_dir=output_dir,
+                examples_per_group=int(examples_per_group),
+                save_grad_cam=save_grad_cam,
+                target_layer_name=target_layer,
+                cam_alpha=cam_alpha,
+                filter_class=filter_class,
+                sort_mode=sort_mode,
+            )
+        except Exception as error:
+            raise gr.Error(str(error)) from error
+
+        summary = result["summary"]
+        report_text = (
+            f"Raport zapisany w: {result['output_root']}\n"
+            f"CSV: {result['predictions_csv_path']}\n"
+            f"Summary: {result['summary_path']}"
+        )
+        return (
+            format_analysis_html(summary),
+            summary,
+            str(result["predictions_csv_path"]),
+            str(result["summary_path"]),
+            report_text,
+            build_gallery_update(summary, "false_positive"),
+            build_gallery_update(summary, "false_negative"),
+            build_gallery_update(summary, "true_positive"),
+            build_gallery_update(summary, "true_negative"),
+            build_gallery_update(summary, "errors"),
+            build_gallery_update(summary, "correct"),
+        )
+
     with gr.Blocks(title="Detektor obrazow AI") as demo:
         with gr.Column(elem_classes=["app-shell"]):
             gr.HTML(title_html)
-            with gr.Row(equal_height=True):
-                with gr.Column(scale=5):
+            with gr.Tabs():
+                with gr.Tab("Pojedynczy obraz"):
+                    with gr.Row(equal_height=True):
+                        with gr.Column(scale=5):
+                            with gr.Group(elem_classes=["panel-card"]):
+                                input_image = gr.Image(
+                                    type="pil",
+                                    label="Obraz wejsciowy",
+                                    height=420,
+                                    elem_classes=["upload-zone"],
+                                )
+                                cam_alpha_single = gr.Slider(
+                                    minimum=0.15,
+                                    maximum=0.75,
+                                    value=0.45,
+                                    step=0.05,
+                                    label="Moc nakladki Grad-CAM",
+                                )
+                                analyze_button = gr.Button("Analizuj obraz", variant="primary")
+                                gr.Markdown(
+                                    "Model zwroci etykiete, pewnosc i mape ciepla wskazujaca obszary istotne dla decyzji.",
+                                    elem_classes=["footnote"],
+                                )
+
+                        with gr.Column(scale=4):
+                            with gr.Group(elem_classes=["panel-card"]):
+                                result_html = gr.HTML(label="Wynik")
+                                with gr.Row():
+                                    overlay_image = gr.Image(
+                                        type="pil",
+                                        label="Grad-CAM",
+                                        height=300,
+                                    )
+                                    original_image = gr.Image(
+                                        type="pil",
+                                        label="Podglad obrazu",
+                                        height=300,
+                                    )
+
+                    analyze_button.click(
+                        fn=analyze_image,
+                        inputs=[input_image, cam_alpha_single],
+                        outputs=[result_html, overlay_image, original_image],
+                    )
+
+                with gr.Tab("Analiza bledow"):
+                    with gr.Row(equal_height=True):
+                        with gr.Column(scale=4):
+                            with gr.Group(elem_classes=["panel-card"]):
+                                split_input = gr.Dropdown(
+                                    choices=["test", "val", "train"],
+                                    value="test",
+                                    label="Split do analizy",
+                                )
+                                class_filter_input = gr.Dropdown(
+                                    choices=["all", *bundle["class_names"]],
+                                    value="all",
+                                    label="Filtr klasy",
+                                )
+                                sort_mode_input = gr.Dropdown(
+                                    choices=[
+                                        "default",
+                                        "hardest",
+                                        "most_confident",
+                                        "least_confident",
+                                    ],
+                                    value="hardest",
+                                    label="Sortowanie przypadkow",
+                                )
+                                examples_input = gr.Slider(
+                                    minimum=1,
+                                    maximum=30,
+                                    value=12,
+                                    step=1,
+                                    label="Przykladow na grupe",
+                                )
+                                save_grad_cam_input = gr.Checkbox(
+                                    value=True,
+                                    label="Zapisz Grad-CAM dla eksportowanych przykladow",
+                                )
+                                config_path_input = gr.Textbox(
+                                    value=str(DEFAULT_CONFIG),
+                                    label="Sciezka config.yaml",
+                                )
+                                output_dir_input = gr.Textbox(
+                                    value="reports/error_analysis",
+                                    label="Folder raportu",
+                                )
+                                target_layer_input = gr.Textbox(
+                                    value="",
+                                    label="Warstwa Grad-CAM (opcjonalnie)",
+                                )
+                                cam_alpha_batch = gr.Slider(
+                                    minimum=0.15,
+                                    maximum=0.75,
+                                    value=0.45,
+                                    step=0.05,
+                                    label="Moc nakladki Grad-CAM",
+                                )
+                                analyze_errors_button = gr.Button(
+                                    "Uruchom analize bledow",
+                                    variant="primary",
+                                )
+                                gr.Markdown(
+                                    "Filtr klasy pokazuje przypadki, gdzie dana klasa jest rzeczywista albo przewidziana. Tryb `hardest` promuje najbardziej mylace przypadki.",
+                                    elem_classes=["footnote"],
+                                )
+
+                        with gr.Column(scale=5):
+                            with gr.Group(elem_classes=["panel-card"]):
+                                analysis_html = gr.HTML(label="Raport")
+                                analysis_json = gr.JSON(label="Summary JSON")
+                                predictions_file = gr.File(label="predictions.csv")
+                                summary_file = gr.File(label="summary.json")
+                                output_info = gr.Textbox(label="Zapisane artefakty")
+
                     with gr.Group(elem_classes=["panel-card"]):
-                        input_image = gr.Image(
-                            type="pil",
-                            label="Obraz wejsciowy",
-                            height=420,
-                            elem_classes=["upload-zone"],
+                        false_positive_gallery = gr.Gallery(
+                            label="False positive",
+                            visible=False,
+                            columns=3,
+                            height="auto",
                         )
-                        cam_alpha = gr.Slider(
-                            minimum=0.15,
-                            maximum=0.75,
-                            value=0.45,
-                            step=0.05,
-                            label="Moc nakladki Grad-CAM",
+                        false_negative_gallery = gr.Gallery(
+                            label="False negative",
+                            visible=False,
+                            columns=3,
+                            height="auto",
                         )
-                        analyze_button = gr.Button("Analizuj obraz", variant="primary")
-                        gr.Markdown(
-                            "Model zwroci etykiete, pewnosc i mape ciepla wskazujaca obszary istotne dla decyzji.",
-                            elem_classes=["footnote"],
+                        true_positive_gallery = gr.Gallery(
+                            label="True positive",
+                            visible=False,
+                            columns=3,
+                            height="auto",
+                        )
+                        true_negative_gallery = gr.Gallery(
+                            label="True negative",
+                            visible=False,
+                            columns=3,
+                            height="auto",
+                        )
+                        errors_gallery = gr.Gallery(
+                            label="Errors",
+                            visible=False,
+                            columns=3,
+                            height="auto",
+                        )
+                        correct_gallery = gr.Gallery(
+                            label="Correct",
+                            visible=False,
+                            columns=3,
+                            height="auto",
                         )
 
-                with gr.Column(scale=4):
-                    with gr.Group(elem_classes=["panel-card"]):
-                        result_html = gr.HTML(label="Wynik")
-                        with gr.Row():
-                            overlay_image = gr.Image(
-                                type="pil",
-                                label="Grad-CAM",
-                                height=300,
-                            )
-                            original_image = gr.Image(
-                                type="pil",
-                                label="Podglad obrazu",
-                                height=300,
-                            )
-
-            analyze_button.click(
-                fn=analyze_image,
-                inputs=[input_image, cam_alpha],
-                outputs=[result_html, overlay_image, original_image],
-            )
+                    analyze_errors_button.click(
+                        fn=run_error_analysis_from_ui,
+                        inputs=[
+                            split_input,
+                            class_filter_input,
+                            sort_mode_input,
+                            examples_input,
+                            save_grad_cam_input,
+                            config_path_input,
+                            output_dir_input,
+                            target_layer_input,
+                            cam_alpha_batch,
+                        ],
+                        outputs=[
+                            analysis_html,
+                            analysis_json,
+                            predictions_file,
+                            summary_file,
+                            output_info,
+                            false_positive_gallery,
+                            false_negative_gallery,
+                            true_positive_gallery,
+                            true_negative_gallery,
+                            errors_gallery,
+                            correct_gallery,
+                        ],
+                    )
 
             gr.Markdown(
                 "To narzedzie wspiera decyzje analityczne. Wysoka pewnosc modelu nie jest dowodem absolutnym.",
@@ -306,6 +604,7 @@ def build_interface(bundle: dict):
 def main():
     args = parse_args()
     bundle = load_model_bundle(args.checkpoint)
+    bundle["checkpoint_path"] = str(args.checkpoint)
     demo = build_interface(bundle)
     demo.launch(
         server_name=args.host,

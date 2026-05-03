@@ -176,12 +176,32 @@ python -m src.robustness_eval --checkpoint models/best_model.pt
 
 Raport zapisze sie domyslnie do `reports/robustness_eval.json`.
 
+## Analiza Bledow
+
+Po treningu mozna wyeksportowac pelny CSV z predykcjami oraz przykladowe false positive, false negative i poprawne klasyfikacje:
+
+```bash
+python -m src.error_analysis --checkpoint models/best_model.pt --split test --save-grad-cam
+```
+
+Mozna tez zawezic analize do wybranej klasy i posortowac przypadki wedlug trudnosci:
+
+```bash
+python -m src.error_analysis --checkpoint models/best_model.pt --split test --filter-class ai-generated --sort-mode hardest --save-grad-cam
+```
+
+Domyslnie raport zapisze sie do `reports/error_analysis/test/` i utworzy:
+- `predictions.csv` z wszystkimi predykcjami dla wybranego splitu,
+- `summary.json` z metrykami i macierza pomylek,
+- `examples/` z wybranymi przypadkami do analizy i dokumentacji.
+
 ## Demo Webowe
 
-Lokalne demo z uploadem obrazu, wynikiem klasyfikacji i mapa Grad-CAM:
+Lokalne demo z uploadem obrazu, wynikiem klasyfikacji, mapa Grad-CAM oraz zakladka do analizy bledow:
 
 ```bash
 python -m src.web_demo --checkpoint models/best_model.pt
 ```
 
 Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.
+W zakladce `Analiza bledow` mozna uruchomic eksport raportu dla `train`, `val` albo `test`, przefiltrowac przypadki po klasie i posortowac je np. trybem `hardest`, zeby od razu obejrzec najbardziej mylace false positive / false negative bez wychodzenia z demo.
