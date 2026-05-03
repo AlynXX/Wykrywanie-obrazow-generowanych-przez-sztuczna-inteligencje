@@ -1,6 +1,6 @@
 # Wykrywanie Obrazow Generowanych Przez AI
 
-Projekt dotyczy wykrywania, czy obraz jest prawdziwym zdjeciem, czy zostal wygenerowany przez model AI. Obecna wersja repo skupia sie przede wszystkim na baseline `real vs fake`, a etap deepfake twarzy jest przygotowany jako nastepny krok rozwoju.
+Projekt dotyczy wykrywania, czy obraz jest prawdziwym zdjeciem, czy zostal wygenerowany przez model AI. Repo zawiera juz domkniety baseline `real vs fake`, a dodatkowo jest przygotowane pod osobny etap twarzowy / deepfake oparty o cropy twarzy.
 
 ## Aktualny Stan
 
@@ -9,7 +9,9 @@ Projekt dotyczy wykrywania, czy obraz jest prawdziwym zdjeciem, czy zostal wygen
 - Dziala Grad-CAM dla pojedynczych obrazow.
 - Dziala lokalne demo webowe w Gradio.
 - Dziala test odpornosci na spadek jakosci obrazu.
-- Etap deepfake twarzy nie jest jeszcze domkniety jako osobny, finalny pipeline.
+- Dziala preprocessing datasetu twarzy z automatycznym cropowaniem.
+- Jest gotowa konfiguracja treningu osobnego modelu twarzowego.
+- Dziala benchmark porownujacy model globalny i model twarzowy na portretach.
 
 ## Najwazniejsze Wyniki
 
@@ -95,6 +97,38 @@ data/real_vs_ai/
     real/
 ```
 
+Etap twarzowy korzysta z dwoch struktur danych:
+
+```text
+data/deepfake_faces/
+  train/
+    fake/
+    real/
+  val/
+    fake/
+    real/
+  test/
+    fake/
+    real/
+```
+
+To sa oryginalne portrety lub klatki, z ktorych beda wycinane twarze.
+
+Po preprocessingu powstaje osobny dataset cropow:
+
+```text
+data/deepfake_faces_crops/
+  train/
+    fake/
+    real/
+  val/
+    fake/
+    real/
+  test/
+    fake/
+    real/
+```
+
 ## Szybki Start
 
 1. Instalacja zaleznosci:
@@ -142,6 +176,44 @@ python -m src.robustness_eval --checkpoint models/best_model.pt
 ```
 
 Raport zapisze sie domyslnie do `reports/robustness_eval.json`.
+
+## Etap Twarzowy
+
+1. Przygotowanie cropow twarzy z surowego datasetu portretow:
+
+```bash
+python -m src.deepfake_faces prepare-dataset --input-dir data/deepfake_faces --output-dir data/deepfake_faces_crops
+```
+
+Domyslnie skrypt zachowuje tylko najwieksza twarz na obrazie, dodaje margines wokol bboxu i zapisuje manifest do `data/deepfake_faces_crops/face_dataset_manifest.json`.
+
+2. Analiza pojedynczego obrazu z wykryciem twarzy:
+
+```bash
+python -m src.deepfake_faces --checkpoint models/best_model.pt --image path/to/portrait.jpg --save-annotated-image reports/faces_preview.jpg
+```
+
+Komenda dziala tez w trybie jawnym:
+
+```bash
+python -m src.deepfake_faces inspect --checkpoint models/best_model.pt --image path/to/portrait.jpg
+```
+
+3. Trening osobnego modelu twarzowego:
+
+```bash
+python -m src.train --config config_faces.yaml
+```
+
+Checkpointy i podsumowanie treningu zapisza sie domyslnie do `models/faces/`.
+
+4. Porownanie modelu globalnego i twarzowego na portretach:
+
+```bash
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces/best_model.pt --data-dir data/deepfake_faces --split test
+```
+
+Raport porownawczy zapisze sie domyslnie do `reports/face_model_comparison.json`, a pelny CSV obok niego.
 
 ## Analiza Bledow
 
