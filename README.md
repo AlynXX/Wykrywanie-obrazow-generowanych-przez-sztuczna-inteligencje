@@ -215,6 +215,18 @@ python -m src.compare_face_models --global-checkpoint models/best_model.pt --fac
 
 Raport porownawczy zapisze sie domyslnie do `reports/face_model_comparison.json`, a pelny CSV obok niego.
 
+5. Przygotowanie malego datasetu adaptacyjnego `hard fakes + old real`:
+
+```bash
+python -m src.prepare_adaptation_dataset --fake-dir data/new_dataset/hard_fakes --real-dir data/deepfake_faces_crops/train/real --output-dir data/hard_fakes_adaptation --copy
+```
+
+Domyslnie skrypt przygotuje:
+- `train/fake=500`, `val/fake=100`, `test/fake=100`
+- `train/real=1000`, `val/real=200`, `test/real=200`
+
+Wszystkie przypisania zapisze tez do `adaptation_manifest.json`.
+
 ## Analiza Bledow
 
 Po treningu mozna wyeksportowac pelny CSV z predykcjami oraz przykladowe false positive, false negative i poprawne klasyfikacje:
@@ -242,5 +254,12 @@ Lokalne demo z uploadem obrazu, wynikiem klasyfikacji, mapa Grad-CAM oraz zaklad
 python -m src.web_demo --checkpoint models/best_model.pt
 ```
 
+Jesli dostepny jest tez model twarzowy, demo moze pokazac oba etapy projektu naraz:
+
+```bash
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces/best_model.pt
+```
+
 Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.
+W zakladce `Pojedynczy obraz` zobaczysz wtedy wynik modelu globalnego dla calego kadru oraz osobny wynik modelu twarzowego dla najwiekszej wykrytej twarzy.
 W zakladce `Analiza bledow` mozna uruchomic eksport raportu dla `train`, `val` albo `test`, przefiltrowac przypadki po klasie i posortowac je np. trybem `hardest`, zeby od razu obejrzec najbardziej mylace false positive / false negative bez wychodzenia z demo.

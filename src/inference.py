@@ -80,6 +80,69 @@ def analyze_image_quality(image: Image.Image):
     }
 
 
+def analyze_visual_domain(image: Image.Image):
+    rgb_image = image.convert("RGB")
+    image_array = np.array(rgb_image)
+    target_size = 160
+    if max(image_array.shape[:2]) > target_size:
+        scale = target_size / max(image_array.shape[:2])
+        resized = cv2.resize(
+            image_array,
+            (max(32, int(image_array.shape[1] * scale)), max(32, int(image_array.shape[0] * scale))),
+            interpolation=cv2.INTER_AREA,
+        )
+    else:
+        resized = image_array
+
+    grayscale = cv2.cvtColor(resized, cv2.COLOR_RGB2GRAY)
+    hsv = cv2.cvtColor(resized, cv2.COLOR_RGB2HSV)
+    blurred = cv2.GaussianBlur(resized, (5, 5), 0)
+    detail_map = np.abs(resized.astype(np.float32) - blurred.astype(np.float32)).mean(axis=2)
+    edges = cv2.Canny(grayscale, 80, 180)
+
+    quantized = (resized // 8).reshape(-1, 3)
+    unique_colors = len(np.unique(quantized, axis=0))
+    total_pixels = max(1, quantized.shape[0])
+    unique_color_ratio = unique_colors / total_pixels
+    flat_region_ratio = float((detail_map < 6.0).mean())
+    edge_density = float((edges > 0).mean())
+    saturation_mean = float(hsv[:, :, 1].mean())
+    contrast_score = float(grayscale.std())
+
+    reasons = []
+    illustration_like = False
+
+    if flat_region_ratio > 0.72 and unique_color_ratio < 0.10:
+        illustration_like = True
+        reasons.append("duze plaskie obszary i mala roznorodnosc kolorow")
+    if flat_region_ratio > 0.78 and saturation_mean > 105.0:
+        illustration_like = True
+        reasons.append("wysokie nasycenie przy bardzo gladkich powierzchniach")
+    if edge_density > 0.22 and flat_region_ratio > 0.68:
+        illustration_like = True
+        reasons.append("duzo ostrych konturow przy ograniczonej teksturze")
+    if contrast_score < 14.0 and unique_color_ratio < 0.10:
+        illustration_like = True
+        reasons.append("niska tekstura tonalna typowa dla ilustracji lub animacji")
+
+    severity = "ok"
+    if illustration_like and len(reasons) >= 2:
+        severity = "high"
+    elif illustration_like:
+        severity = "medium"
+
+    return {
+        "warning": illustration_like,
+        "severity": severity,
+        "reasons": reasons,
+        "flat_region_ratio": flat_region_ratio,
+        "edge_density": edge_density,
+        "unique_color_ratio": unique_color_ratio,
+        "saturation_mean": saturation_mean,
+        "contrast_score": contrast_score,
+    }
+
+
 def resolve_target_layer(model: torch.nn.Module, target_layer_name: str | None):
     named_modules = dict(model.named_modules())
     if target_layer_name:
@@ -239,6 +302,7 @@ def predict_with_grad_cam(
         "cam": cam,
         "input_image": rgb_image,
         "quality": quality,
+        "domain": analyze_visual_domain(rgb_image),
     }
 
 
@@ -262,4 +326,5 @@ def predict_image(bundle: dict, image: Image.Image):
         "confidence": confidence,
         "probabilities": probability_pairs,
         "quality": analyze_image_quality(rgb_image),
+        "domain": analyze_visual_domain(rgb_image),
     }

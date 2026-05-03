@@ -3,13 +3,17 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import cv2
 import gradio as gr
+import numpy as np
 from PIL import Image
 
 from .error_analysis import run_error_analysis
+from .face_utils import build_face_detector, detect_faces, extract_face_crops, render_face_boxes
 from .inference import load_model_bundle, predict_with_grad_cam
 
 DEFAULT_CHECKPOINT = Path("models/best_model.pt")
+DEFAULT_FACE_CHECKPOINT = Path("models/faces/best_model.pt")
 DEFAULT_CONFIG = Path("config.yaml")
 
 CUSTOM_CSS = """
@@ -159,13 +163,25 @@ body, .gradio-container {
 def parse_args():
     parser = argparse.ArgumentParser(description="Lokalne demo webowe modelu Real vs AI")
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
+    parser.add_argument(
+        "--face-checkpoint",
+        type=Path,
+        default=DEFAULT_FACE_CHECKPOINT,
+        help="Opcjonalny checkpoint modelu twarzowego.",
+    )
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--share", action="store_true")
     return parser.parse_args()
 
 
-def format_result_html(result: dict) -> str:
+def format_result_html(
+    result: dict,
+    *,
+    title: str = "Wynik analizy",
+    intro_text: str = "Grad-CAM wskazuje, na ktorych obszarach obrazu model opieral decyzje.",
+    extra_html: str = "",
+) -> str:
     bars = []
     for item in result["probabilities"]:
         percentage = item["probability"] * 100
@@ -194,11 +210,10 @@ def format_result_html(result: dict) -> str:
           </div>
         </div>
         """
-
     return f"""
     <div class="result-box">
       <div style="font-size:0.92rem; color:#50657f; text-transform:uppercase; letter-spacing:0.08em;">
-        Wynik analizy
+        {title}
       </div>
       <div style="font-size:2rem; margin-top:8px;">
         <span class="score-strong">{result['predicted_label']}</span>
@@ -207,7 +222,7 @@ def format_result_html(result: dict) -> str:
         Pewnosc modelu: <strong>{result['confidence'] * 100:.2f}%</strong>
       </div>
       <div style="margin-top:14px; color:#50657f;">
-        Grad-CAM wskazuje, na ktorych obszarach obrazu model opieral decyzje.
+        {intro_text}
       </div>
       <table style="margin-top:16px; width:100%; border-collapse:collapse; color:#17324d;">
         {''.join(bars)}
@@ -215,9 +230,50 @@ def format_result_html(result: dict) -> str:
       <div style="margin-top:14px; color:#50657f;">
         Warstwa wyjasniajaca: <strong>{result['target_layer']}</strong>
       </div>
+      {extra_html}
       {warning_html}
     </div>
     """
+
+
+def format_pending_html(message: str, *, title: str) -> str:
+    return f"""
+    <div class="result-box">
+      <div style="font-size:0.92rem; color:#50657f; text-transform:uppercase; letter-spacing:0.08em;">
+        {title}
+      </div>
+      <div style="margin-top:10px; color:#17324d;">
+        {message}
+      </div>
+    </div>
+    """
+
+
+def detect_primary_face(image: Image.Image, detector) -> tuple[Image.Image | None, Image.Image]:
+    image_rgb = image.convert("RGB")
+    image_bgr = cv2.cvtColor(np.array(image_rgb), cv2.COLOR_RGB2BGR)
+    detections = detect_faces(
+        image_bgr,
+        detector=detector,
+        min_face_size=64,
+        scale_factor=1.1,
+        min_neighbors=5,
+    )
+    face_records = extract_face_crops(
+        image_bgr,
+        detections,
+        margin_ratio=0.22,
+        square_crop=True,
+        selection="largest",
+        max_faces=1,
+    )
+    if not face_records:
+        return None, image_rgb
+
+    annotated_bgr = render_face_boxes(image_bgr, face_records)
+    annotated_image = Image.fromarray(cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB))
+    face_image = Image.fromarray(face_records[0]["image_rgb"])
+    return face_image, annotated_image
 
 
 def format_analysis_html(summary: dict) -> str:
@@ -325,35 +381,114 @@ def build_gallery_update(summary: dict, group_name: str):
     return gr.update(value=items, visible=bool(items))
 
 
-def build_interface(bundle: dict):
+def build_interface(bundle: dict, face_bundle: dict | None = None):
+    face_model_status = (
+        f"aktywny: {face_bundle['model_name']}" if face_bundle is not None else "niedostepny"
+    )
+    face_detector = build_face_detector() if face_bundle is not None else None
     title_html = f"""
     <div class="hero-card">
       <h1 class="hero-title">Detektor obrazow AI</h1>
       <p class="hero-subtitle">
         Wgraj obraz, aby sprawdzic, czy model traktuje go jako prawdziwe zdjecie czy syntetyczna falszywke.
-        Obok wyniku zobaczysz mape Grad-CAM pokazujaca, gdzie sie skupial.
+        Demo pokazuje teraz dwa etapy projektu: model globalny dla calego obrazu i model twarzowy dla wykrytej twarzy.
       </p>
       <div class="pill-row">
-        <div class="pill">Model: {bundle['model_name']}</div>
+        <div class="pill">Model globalny: {bundle['model_name']}</div>
+        <div class="pill">Model twarzowy: {face_model_status}</div>
         <div class="pill">Rozmiar wejscia: {bundle['image_size']} px</div>
         <div class="pill">Klasy: {", ".join(bundle['class_names'])}</div>
       </div>
     </div>
     """
 
+    def image_update(value, visible: bool):
+        return gr.update(value=value, visible=visible)
+
     def analyze_image(image: Image.Image, cam_alpha: float):
         if image is None:
             raise gr.Error("Najpierw dodaj obraz do analizy.")
 
-        result = predict_with_grad_cam(
-            bundle=bundle,
-            image=image,
-            cam_alpha=cam_alpha,
+        base_image = image.convert("RGB")
+        global_result_html = format_pending_html(
+            "Analiza globalna jest gotowa do uzycia dla pelnych kadrow bez dominujacej twarzy.",
+            title="Wynik modelu globalnego",
         )
+        original_preview = base_image
+        face_result_html = format_pending_html(
+            "Model twarzowy nie jest zaladowany. Uruchom demo z checkpointem w models/faces/best_model.pt.",
+            title="Model twarzowy",
+        )
+        global_overlay_update = image_update(None, False)
+        original_preview_update = image_update(base_image, True)
+        face_overlay_update = image_update(None, False)
+        face_crop_update = image_update(None, False)
+
+        if face_bundle is not None:
+            face_image, annotated_preview = detect_primary_face(base_image, face_detector)
+            original_preview_update = image_update(annotated_preview, True)
+            if face_image is None:
+                global_result = predict_with_grad_cam(
+                    bundle=bundle,
+                    image=base_image,
+                    cam_alpha=cam_alpha,
+                )
+                global_result_html = format_result_html(
+                    global_result,
+                    title="Wynik modelu globalnego",
+                    intro_text="Grad-CAM wskazuje, na ktorych obszarach calego obrazu model opieral decyzje.",
+                )
+                global_overlay_update = image_update(global_result["overlay_image"], True)
+                original_preview_update = image_update(global_result["input_image"], True)
+                face_result_html = format_pending_html(
+                    "Nie wykryto twarzy na tym obrazie, wiec analiza twarzowa nie zostala uruchomiona."
+                    " Pokazano tylko wynik modelu globalnego.",
+                    title="Model twarzowy",
+                )
+            else:
+                global_result_html = format_pending_html(
+                    "Wykryto twarz, wiec wynik modelu globalnego zostal ukryty, aby nie mieszac go z bardziej trafna analiza twarzowa.",
+                    title="Wynik modelu globalnego",
+                )
+                face_crop_update = image_update(face_image, True)
+                face_result = predict_with_grad_cam(
+                    bundle=face_bundle,
+                    image=face_image,
+                    cam_alpha=cam_alpha,
+                )
+                face_result_html = format_result_html(
+                    face_result,
+                    title="Wynik modelu twarzowego",
+                    intro_text="Ten wynik pochodzi z osobnego modelu wytrenowanego na cropach twarzy.",
+                    extra_html=(
+                        "<div style='margin-top:14px; color:#50657f;'>"
+                        "Analiza dotyczy najwiekszej wykrytej twarzy na obrazie."
+                        "</div>"
+                    ),
+                )
+                face_overlay_update = image_update(face_result["overlay_image"], True)
+                face_crop_update = image_update(face_result["input_image"], True)
+        else:
+            global_result = predict_with_grad_cam(
+                bundle=bundle,
+                image=base_image,
+                cam_alpha=cam_alpha,
+            )
+            global_result_html = format_result_html(
+                global_result,
+                title="Wynik modelu globalnego",
+                intro_text="Grad-CAM wskazuje, na ktorych obszarach calego obrazu model opieral decyzje.",
+            )
+            global_overlay_update = image_update(global_result["overlay_image"], True)
+            original_preview_update = image_update(global_result["input_image"], True)
+
         return (
-            format_result_html(result),
-            result["overlay_image"],
-            result["input_image"],
+            global_result_html,
+            face_result_html,
+            global_overlay_update,
+            original_preview_update,
+            face_overlay_update,
+            face_crop_update,
         )
 
     def run_error_analysis_from_ui(
@@ -437,23 +572,43 @@ def build_interface(bundle: dict):
 
                         with gr.Column(scale=4):
                             with gr.Group(elem_classes=["panel-card"]):
-                                result_html = gr.HTML(label="Wynik")
+                                result_html = gr.HTML(label="Wynik modelu globalnego")
                                 with gr.Row():
                                     overlay_image = gr.Image(
                                         type="pil",
-                                        label="Grad-CAM",
+                                        label="Grad-CAM modelu globalnego",
                                         height=300,
                                     )
                                     original_image = gr.Image(
                                         type="pil",
-                                        label="Podglad obrazu",
+                                        label="Podglad obrazu / wykryta twarz",
                                         height=300,
+                                    )
+                            with gr.Group(elem_classes=["panel-card"]):
+                                face_result_html = gr.HTML(label="Wynik modelu twarzowego")
+                                with gr.Row():
+                                    face_overlay_image = gr.Image(
+                                        type="pil",
+                                        label="Grad-CAM modelu twarzowego",
+                                        height=280,
+                                    )
+                                    face_crop_image = gr.Image(
+                                        type="pil",
+                                        label="Crop twarzy",
+                                        height=280,
                                     )
 
                     analyze_button.click(
                         fn=analyze_image,
                         inputs=[input_image, cam_alpha_single],
-                        outputs=[result_html, overlay_image, original_image],
+                        outputs=[
+                            result_html,
+                            face_result_html,
+                            overlay_image,
+                            original_image,
+                            face_overlay_image,
+                            face_crop_image,
+                        ],
                     )
 
                 with gr.Tab("Analiza bledow"):
@@ -605,7 +760,11 @@ def main():
     args = parse_args()
     bundle = load_model_bundle(args.checkpoint)
     bundle["checkpoint_path"] = str(args.checkpoint)
-    demo = build_interface(bundle)
+    face_bundle = None
+    if args.face_checkpoint is not None and args.face_checkpoint.exists():
+        face_bundle = load_model_bundle(args.face_checkpoint)
+        face_bundle["checkpoint_path"] = str(args.face_checkpoint)
+    demo = build_interface(bundle, face_bundle=face_bundle)
     demo.launch(
         server_name=args.host,
         server_port=args.port,
