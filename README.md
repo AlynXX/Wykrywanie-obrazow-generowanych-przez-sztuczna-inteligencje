@@ -141,94 +141,34 @@ python -m src.predict --checkpoint models/best_model.pt --image path/to/image.jp
 python -m src.robustness_eval --checkpoint models/best_model.pt
 ```
 
-8. Uruchomienie lokalnego demo:
+Raport zapisze sie domyslnie do `reports/robustness_eval.json`.
+
+## Analiza Bledow
+
+Po treningu mozna wyeksportowac pelny CSV z predykcjami oraz przykladowe false positive, false negative i poprawne klasyfikacje:
+
+```bash
+python -m src.error_analysis --checkpoint models/best_model.pt --split test --save-grad-cam
+```
+
+Mozna tez zawezic analize do wybranej klasy i posortowac przypadki wedlug trudnosci:
+
+```bash
+python -m src.error_analysis --checkpoint models/best_model.pt --split test --filter-class ai-generated --sort-mode hardest --save-grad-cam
+```
+
+Domyslnie raport zapisze sie do `reports/error_analysis/test/` i utworzy:
+- `predictions.csv` z wszystkimi predykcjami dla wybranego splitu,
+- `summary.json` z metrykami i macierza pomylek,
+- `examples/` z wybranymi przypadkami do analizy i dokumentacji.
+
+## Demo Webowe
+
+Lokalne demo z uploadem obrazu, wynikiem klasyfikacji, mapa Grad-CAM oraz zakladka do analizy bledow:
 
 ```bash
 python -m src.web_demo --checkpoint models/best_model.pt
 ```
 
-Po uruchomieniu aplikacja jest dostepna lokalnie pod adresem `http://127.0.0.1:7860`.
-
-## Trening I Runtime
-
-Repo ma juz przygotowane mechanizmy, ktore ulatwiaja dluzsze eksperymenty:
-
-- automatyczny dobor `batch_size`,
-- `AMP` na GPU,
-- checkpointy `best_model.pt`, `last_checkpoint.pt`, `interrupted_checkpoint.pt`,
-- `early stopping`,
-- zapis podsumowania do `models/training_summary.json`.
-
-Przy treningu na GPU wazne sa tez ustawienia loadera. Domyslny config ustawia:
-
-- `num_workers: 6`
-- `persistent_workers: true`
-- `prefetch_factor: 3`
-- `cudnn_benchmark: true`
-- `channels_last: true`
-
-To pomaga lepiej wykorzystac GPU przy stalym rozmiarze wejscia `224x224`.
-
-## Interpretacja Wynikow
-
-Demo i CLI zwracaja:
-
-- etykiete `real` lub `fake`,
-- pewnosc predykcji,
-- mape Grad-CAM,
-- ostrzezenie o niskiej jakosci obrazu, jesli obraz jest rozmyty, zbyt maly albo ma bardzo niski kontrast.
-
-Warning o jakosci nie oznacza, ze obraz jest falszywy. Oznacza tylko, ze wynik modelu moze byc mniej stabilny.
-
-## Test Odpornosci
-
-`src.robustness_eval` sprawdza model na kilku profilach degradacji:
-
-- `clean`
-- `jpeg_low`
-- `jpeg_extreme`
-- `blur_light`
-- `blur_strong`
-- `downscale_light`
-- `downscale_strong`
-- `mixed_quality`
-
-Raport zapisuje sie domyslnie do `reports/robustness_eval.json`.
-
-Najwazniejsze obserwacje z aktualnego raportu:
-
-- degradacje lekkie sa znoszone dobrze,
-- najwiekszy spadek daje `jpeg_extreme`,
-- kombinacja kilku degradacji (`mixed_quality`) nadal obniza skutecznosc wyraznie bardziej niz pojedyncze lekkie zaklocenie.
-
-## Struktura Repozytorium
-
-```text
-.
-  config.yaml
-  data/
-  models/
-  reports/
-  src/
-    auto_batch.py
-    dataset.py
-    deepfake_faces.py
-    inference.py
-    model.py
-    predict.py
-    robustness_eval.py
-    split_dataset.py
-    train.py
-    web_demo.py
-  PLAN_PROJEKTU.md
-  README.md
-  requirements.txt
-```
-
-## Co Dalej
-
-Najblizszy plan rozwoju projektu:
-
-- przygotowanie osobnego baseline'u dla twarzy i deepfake,
-- testy na zewnetrznych zestawach twarzy,
-- dalsza analiza bledow i przypadkow spoza rozkladu treningowego.
+Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.
+W zakladce `Analiza bledow` mozna uruchomic eksport raportu dla `train`, `val` albo `test`, przefiltrowac przypadki po klasie i posortowac je np. trybem `hardest`, zeby od razu obejrzec najbardziej mylace false positive / false negative bez wychodzenia z demo.
