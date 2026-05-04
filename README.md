@@ -227,6 +227,32 @@ Domyslnie skrypt przygotuje:
 
 Wszystkie przypisania zapisze tez do `adaptation_manifest.json`.
 
+6. Fine-tuning modelu twarzowego na `hard fakes`:
+
+```bash
+python -m src.train --config config_hard_fakes.yaml --init-checkpoint models/faces/best_model.pt
+```
+
+Ta komenda startuje od wag najlepszego modelu twarzowego, ale nie przenosi historii, optimizera ani starego `best_val_score`, wiec nadaje sie do czystego eksperymentu adaptacyjnego.
+
+7. Strojenie progu decyzyjnego dla modelu adaptacyjnego:
+
+```bash
+python -m src.tune_threshold --checkpoint models/faces_hard_adapt/best_model.pt --config config_hard_fakes.yaml --tune-split val --eval-split test --metric f1_positive
+```
+
+Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy prog dla klasy `fake`.
+
+8. Uzycie progu w predykcji lub GUI:
+
+```bash
+python -m src.predict --checkpoint models/faces_hard_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
+```
+
+```bash
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_hard_adapt/best_model.pt --face-threshold 0.62
+```
+
 ## Analiza Bledow
 
 Po treningu mozna wyeksportowac pelny CSV z predykcjami oraz przykladowe false positive, false negative i poprawne klasyfikacje:

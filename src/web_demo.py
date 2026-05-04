@@ -169,6 +169,12 @@ def parse_args():
         default=DEFAULT_FACE_CHECKPOINT,
         help="Opcjonalny checkpoint modelu twarzowego.",
     )
+    parser.add_argument(
+        "--face-threshold",
+        type=float,
+        default=None,
+        help="Opcjonalny prog decyzyjny dla klasy fake w modelu twarzowym.",
+    )
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--share", action="store_true")
@@ -385,6 +391,10 @@ def build_interface(bundle: dict, face_bundle: dict | None = None):
     face_model_status = (
         f"aktywny: {face_bundle['model_name']}" if face_bundle is not None else "niedostepny"
     )
+    face_threshold = face_bundle.get("decision_threshold") if face_bundle is not None else None
+    face_threshold_label = (
+        f"{face_threshold:.3f}" if isinstance(face_threshold, (float, int)) else "argmax"
+    )
     face_detector = build_face_detector() if face_bundle is not None else None
     title_html = f"""
     <div class="hero-card">
@@ -396,6 +406,7 @@ def build_interface(bundle: dict, face_bundle: dict | None = None):
       <div class="pill-row">
         <div class="pill">Model globalny: {bundle['model_name']}</div>
         <div class="pill">Model twarzowy: {face_model_status}</div>
+        <div class="pill">Prog twarzowy: {face_threshold_label}</div>
         <div class="pill">Rozmiar wejscia: {bundle['image_size']} px</div>
         <div class="pill">Klasy: {", ".join(bundle['class_names'])}</div>
       </div>
@@ -762,7 +773,10 @@ def main():
     bundle["checkpoint_path"] = str(args.checkpoint)
     face_bundle = None
     if args.face_checkpoint is not None and args.face_checkpoint.exists():
-        face_bundle = load_model_bundle(args.face_checkpoint)
+        face_bundle = load_model_bundle(
+            args.face_checkpoint,
+            decision_threshold=args.face_threshold,
+        )
         face_bundle["checkpoint_path"] = str(args.face_checkpoint)
     demo = build_interface(bundle, face_bundle=face_bundle)
     demo.launch(

@@ -12,7 +12,43 @@ from .dataset import build_transforms
 from .model import create_model
 
 
-def load_model_bundle(checkpoint_path: Path, device: torch.device | None = None):
+def choose_positive_class_index(class_names: list[str]) -> int | None:
+    if len(class_names) != 2:
+        return None
+
+    preferred_keywords = ("fake", "ai", "generated", "synthetic", "deepfake")
+    for index, class_name in enumerate(class_names):
+        lower_name = class_name.lower()
+        if any(keyword in lower_name for keyword in preferred_keywords):
+            return index
+
+    return 1
+
+
+def resolve_prediction(
+    probabilities: torch.Tensor,
+    class_names: list[str],
+    decision_threshold: float | None = None,
+):
+    if decision_threshold is not None and len(class_names) == 2:
+        positive_index = choose_positive_class_index(class_names)
+        if positive_index is not None:
+            negative_index = 1 - positive_index
+            positive_probability = float(probabilities[positive_index].item())
+            predicted_index = (
+                positive_index if positive_probability >= float(decision_threshold) else negative_index
+            )
+            return predicted_index, float(probabilities[predicted_index].item())
+
+    confidence, index = torch.max(probabilities, dim=0)
+    return int(index.item()), float(confidence.item())
+
+
+def load_model_bundle(
+    checkpoint_path: Path,
+    device: torch.device | None = None,
+    decision_threshold: float | None = None,
+):
     runtime_device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint = torch.load(checkpoint_path, map_location=runtime_device)
     class_names = checkpoint["class_names"]
@@ -34,6 +70,7 @@ def load_model_bundle(checkpoint_path: Path, device: torch.device | None = None)
         "class_names": class_names,
         "image_size": image_size,
         "model_name": model_name,
+        "decision_threshold": decision_threshold,
     }
 
 
@@ -170,8 +207,7 @@ def compute_probabilities(model: torch.nn.Module, tensor: torch.Tensor):
     with torch.no_grad():
         logits = model(tensor)
         probabilities = torch.softmax(logits, dim=1).squeeze(0)
-        confidence, index = torch.max(probabilities, dim=0)
-    return probabilities.detach().cpu(), int(index.item()), float(confidence.item())
+    return probabilities.detach().cpu()
 
 
 def compute_grad_cam(
@@ -179,6 +215,8 @@ def compute_grad_cam(
     tensor: torch.Tensor,
     target_layer: torch.nn.Module,
     target_class: int | None,
+    class_names: list[str],
+    decision_threshold: float | None,
 ):
     activations = []
     gradients = []
@@ -197,7 +235,11 @@ def compute_grad_cam(
         model.zero_grad(set_to_none=True)
         logits = model(tensor)
         probabilities = torch.softmax(logits, dim=1).squeeze(0)
-        predicted_index = int(probabilities.argmax(dim=0).item())
+        predicted_index, _ = resolve_prediction(
+            probabilities=probabilities,
+            class_names=class_names,
+            decision_threshold=decision_threshold,
+        )
         selected_index = predicted_index if target_class is None else target_class
 
         if selected_index < 0 or selected_index >= probabilities.numel():
@@ -272,6 +314,7 @@ def predict_with_grad_cam(
     device = bundle["device"]
     class_names = bundle["class_names"]
     image_size = bundle["image_size"]
+    decision_threshold = bundle.get("decision_threshold")
 
     rgb_image, tensor = preprocess_image(image=image, image_size=image_size, device=device)
     quality = analyze_image_quality(rgb_image)
@@ -281,6 +324,13 @@ def predict_with_grad_cam(
         tensor=tensor,
         target_layer=target_layer,
         target_class=target_class,
+        class_names=class_names,
+        decision_threshold=decision_threshold,
+    )
+    predicted_index, predicted_confidence = resolve_prediction(
+        probabilities=probabilities,
+        class_names=class_names,
+        decision_threshold=decision_threshold,
     )
     overlay_image = render_grad_cam_overlay(image=rgb_image, cam=cam, alpha=cam_alpha)
 
@@ -295,7 +345,7 @@ def predict_with_grad_cam(
         "selected_index": selected_index,
         "predicted_label": class_names[predicted_index],
         "selected_label": class_names[selected_index],
-        "confidence": float(probabilities[selected_index].item()),
+        "confidence": predicted_confidence if selected_index == predicted_index else float(probabilities[selected_index].item()),
         "probabilities": probability_pairs,
         "target_layer": resolved_target_layer_name,
         "overlay_image": overlay_image,
@@ -303,6 +353,7 @@ def predict_with_grad_cam(
         "input_image": rgb_image,
         "quality": quality,
         "domain": analyze_visual_domain(rgb_image),
+        "decision_threshold": decision_threshold,
     }
 
 
@@ -311,9 +362,15 @@ def predict_image(bundle: dict, image: Image.Image):
     device = bundle["device"]
     class_names = bundle["class_names"]
     image_size = bundle["image_size"]
+    decision_threshold = bundle.get("decision_threshold")
 
     rgb_image, tensor = preprocess_image(image=image, image_size=image_size, device=device)
-    probabilities, predicted_index, confidence = compute_probabilities(model=model, tensor=tensor)
+    probabilities = compute_probabilities(model=model, tensor=tensor)
+    predicted_index, confidence = resolve_prediction(
+        probabilities=probabilities,
+        class_names=class_names,
+        decision_threshold=decision_threshold,
+    )
     probability_pairs = [
         {"label": class_name, "probability": float(probabilities[index].item())}
         for index, class_name in enumerate(class_names)
@@ -327,4 +384,5 @@ def predict_image(bundle: dict, image: Image.Image):
         "probabilities": probability_pairs,
         "quality": analyze_image_quality(rgb_image),
         "domain": analyze_visual_domain(rgb_image),
+        "decision_threshold": decision_threshold,
     }

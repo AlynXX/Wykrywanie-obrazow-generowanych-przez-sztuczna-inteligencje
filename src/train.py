@@ -361,6 +361,12 @@ def parse_args():
     parser.add_argument("--num-workers", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--resume", type=Path, default=None)
+    parser.add_argument(
+        "--init-checkpoint",
+        type=Path,
+        default=None,
+        help="Zaladuj tylko wagi modelu jako start do fine-tuningu bez wznawiania optimizera i historii.",
+    )
     return parser.parse_args()
 
 
@@ -384,7 +390,12 @@ def main():
     runtime_config = config.get("runtime", {})
     auto_batch_config = config.get("auto_batch", {})
     early_stopping_config = config.get("early_stopping", {})
+    if args.resume is not None and args.init_checkpoint is not None:
+        raise ValueError("Nie mozna jednoczesnie uzyc --resume i --init-checkpoint.")
     resume_checkpoint = load_resume_checkpoint(args.resume) if args.resume is not None else None
+    init_checkpoint = (
+        load_resume_checkpoint(args.init_checkpoint) if args.init_checkpoint is not None else None
+    )
 
     data_dir = Path(value_or_default(args.data_dir, data_config, "data_dir", "data/real_vs_ai"))
     output_dir = Path(value_or_default(args.output_dir, data_config, "output_dir", "models"))
@@ -417,6 +428,10 @@ def main():
         model_name = str(resume_checkpoint.get("model_name", model_name))
         image_size = int(resume_checkpoint.get("image_size", image_size))
         print(f"Wznawiam trening z checkpointu: {args.resume}")
+    elif init_checkpoint is not None:
+        model_name = str(init_checkpoint.get("model_name", model_name))
+        image_size = int(init_checkpoint.get("image_size", image_size))
+        print(f"Start fine-tuningu z wag checkpointu: {args.init_checkpoint}")
 
     set_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -434,6 +449,13 @@ def main():
         if checkpoint_class_names and checkpoint_class_names != class_names:
             raise ValueError(
                 "Klasy w checkpointcie nie zgadzaja sie z aktualnym datasetem. "
+                f"checkpoint={checkpoint_class_names}, dataset={class_names}"
+            )
+    if init_checkpoint is not None:
+        checkpoint_class_names = list(init_checkpoint.get("class_names", []))
+        if checkpoint_class_names and checkpoint_class_names != class_names:
+            raise ValueError(
+                "Klasy w checkpointcie startowym nie zgadzaja sie z aktualnym datasetem. "
                 f"checkpoint={checkpoint_class_names}, dataset={class_names}"
             )
     auto_batch_enabled = bool(auto_batch_config.get("enabled", False))
@@ -510,6 +532,9 @@ def main():
     if channels_last_enabled and device.type == "cuda":
         base_model = base_model.to(memory_format=torch.channels_last)
     base_model = base_model.to(device)
+    if init_checkpoint is not None:
+        base_model.load_state_dict(init_checkpoint["state_dict"])
+        print("Zaladowano wagi startowe do fine-tuningu.")
 
     effective_amp = amp_enabled and device.type == "cuda"
     scaler = torch.amp.GradScaler(
@@ -760,6 +785,7 @@ def main():
         {
             "model_name": model_name,
             "class_names": class_names,
+            "init_checkpoint": str(args.init_checkpoint) if args.init_checkpoint is not None else None,
             "dataset_sizes": {
                 "train": len(train_dataset),
                 "val": len(val_dataset),

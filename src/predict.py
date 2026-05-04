@@ -18,6 +18,12 @@ def parse_args():
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Opcjonalny prog decyzyjny dla klasy fake w zadaniu binarnym.",
+    )
+    parser.add_argument(
         "--save-cam",
         type=Path,
         default=None,
@@ -46,7 +52,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    bundle = load_model_bundle(args.checkpoint)
+    bundle = load_model_bundle(args.checkpoint, decision_threshold=args.threshold)
     image = Image.open(args.image).convert("RGB")
 
     if args.save_cam is not None:
@@ -66,6 +72,8 @@ def main():
         print(f"Warstwa Grad-CAM: {result['target_layer']}")
         print(f"Klasa wyjasniana: {result['selected_label']}")
         print(f"Pewnosc: {result['confidence'] * 100:.2f}%")
+        if args.threshold is not None:
+            print(f"Prog decyzyjny: {args.threshold:.3f}")
         if result["selected_index"] != result["predicted_index"]:
             print(f"Klasa przewidziana przez model: {result['predicted_label']}")
         print(f"Zapisano Grad-CAM: {args.save_cam}")
@@ -74,6 +82,8 @@ def main():
     result = predict_image(bundle=bundle, image=image)
     print(f"Klasa: {result['predicted_label']}")
     print(f"Pewnosc: {result['confidence'] * 100:.2f}%")
+    if args.threshold is not None:
+        print(f"Prog decyzyjny: {args.threshold:.3f}")
 
 
 if __name__ == "__main__":
