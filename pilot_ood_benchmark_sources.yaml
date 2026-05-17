@@ -1,0 +1,24 @@
+settings:
+  output_dir: data/ood_pilot_benchmark
+  split_name: test
+  seed: 42
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+    - .webp
+
+sources:
+  fake:
+    - name: gpt
+      path: data/ood_sources/gpt_fake
+      limit: 20
+    - name: nano2
+      path: data/ood_sources/nano2_fake
+      limit: 20
+
+  real:
+    - name: matched_real
+      path: data/ood_sources/real_matched
+      limit: 40

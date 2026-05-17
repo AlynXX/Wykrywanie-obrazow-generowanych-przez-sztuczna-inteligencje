@@ -1,0 +1,3 @@
+data:
+  data_dir: data/gemini_benchmark
+  output_dir: models/gemini_benchmark_unused

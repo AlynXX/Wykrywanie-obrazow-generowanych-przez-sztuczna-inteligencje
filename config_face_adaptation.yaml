@@ -1,6 +1,6 @@
 data:
-  data_dir: data/deepfake_faces_crops
-  output_dir: models/faces_convnext
+  data_dir: data/face_adaptation
+  output_dir: models/faces_convnext_v2_adapt
 
 model:
   model_name: convnext_tiny
@@ -8,9 +8,9 @@ model:
   image_size: 224
 
 training:
-  epochs: 12
+  epochs: 5
   batch_size: auto
-  learning_rate: 0.0001
+  learning_rate: 0.00003
   num_workers: 6
   persistent_workers: true
   prefetch_factor: 3
@@ -28,7 +28,7 @@ runtime:
 auto_batch:
   enabled: true
   cache_enabled: true
-  cache_path: models/faces_convnext/auto_batch_compiled_cache.json
+  cache_path: models/faces_convnext_v2_adapt/auto_batch_compiled_cache.json
   cache_max_entries: 200
   cache_max_age_hours: 168
   min_batch: 2
@@ -53,6 +53,6 @@ auto_batch:
 early_stopping:
   enabled: true
   monitor: auto
-  patience: 5
-  min_delta: 0.001
-  start_epoch: 3
+  patience: 2
+  min_delta: 0.0005
+  start_epoch: 2

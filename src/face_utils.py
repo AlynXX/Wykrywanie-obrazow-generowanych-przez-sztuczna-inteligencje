@@ -105,17 +105,41 @@ def _square_bbox(x1: int, y1: int, x2: int, y2: int, image_width: int, image_hei
     )
 
 
+def _portrait_bbox(
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    image_width: int,
+    image_height: int,
+):
+    center_x = x + width / 2.0
+    center_y = y + height / 2.0
+    portrait_width = width * 2.2
+    portrait_height = height * 2.9
+
+    x1 = int(round(center_x - portrait_width / 2.0))
+    x2 = int(round(center_x + portrait_width / 2.0))
+    y1 = int(round(y - height * 0.45))
+    y2 = int(round(center_y + portrait_height / 2.0))
+
+    return _clamp_bbox(x1, y1, x2, y2, image_width, image_height)
+
+
 def extract_face_crops(
     image_bgr: np.ndarray,
     detections: list[tuple[int, int, int, int]],
     *,
     margin_ratio: float,
     square_crop: bool,
+    crop_style: str,
     selection: str,
     max_faces: int | None,
 ):
     if selection not in {"all", "largest"}:
         raise ValueError("selection musi miec wartosc 'all' albo 'largest'.")
+    if crop_style not in {"face", "portrait"}:
+        raise ValueError("crop_style musi miec wartosc 'face' albo 'portrait'.")
 
     image_height, image_width = image_bgr.shape[:2]
     ordered_detections = sorted(detections, key=lambda item: item[2] * item[3], reverse=True)
@@ -133,8 +157,18 @@ def extract_face_crops(
         x2 = x + width + margin_x
         y2 = y + height + margin_y
 
-        x1, y1, x2, y2 = _clamp_bbox(x1, y1, x2, y2, image_width, image_height)
-        if square_crop:
+        if crop_style == "portrait":
+            x1, y1, x2, y2 = _portrait_bbox(
+                x=x,
+                y=y,
+                width=width,
+                height=height,
+                image_width=image_width,
+                image_height=image_height,
+            )
+        else:
+            x1, y1, x2, y2 = _clamp_bbox(x1, y1, x2, y2, image_width, image_height)
+        if square_crop and crop_style == "face":
             x1, y1, x2, y2 = _square_bbox(x1, y1, x2, y2, image_width, image_height)
 
         face_bgr = image_bgr[y1:y2, x1:x2]
@@ -146,6 +180,7 @@ def extract_face_crops(
                 "face_index": face_index,
                 "detected_bbox_xywh": [x, y, width, height],
                 "crop_bbox_xyxy": [x1, y1, x2, y2],
+                "crop_style": crop_style,
                 "width": int(x2 - x1),
                 "height": int(y2 - y1),
                 "area": int(width * height),

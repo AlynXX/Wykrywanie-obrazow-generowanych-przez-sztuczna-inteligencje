@@ -1,0 +1,44 @@
+settings:
+  output_dir: data/deepfake_faces_v2
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+    - .webp
+
+sources:
+  real:
+    - name: ffhq
+      path: data/multisource_raw/FFHQ
+      limit: 6000
+    - name: faces_140k_real
+      path: data/multisource_raw/140k-real-vs-fake/real
+      limit: 6000
+    - name: deep_vs_real_real
+      path: data/multisource_raw/Deep-vs-Real/real
+      limit: 6000
+    - name: deepfake_vs_real_60k_real
+      path: data/multisource_raw/deepfake-vs-real-60k/real
+      limit: 6000
+    - name: hardfakes_real
+      path: data/multisource_raw/real-vs-hardfakes/real
+      limit: 589
+
+  fake:
+    - name: faces_140k_fake
+      path: data/multisource_raw/140k-real-vs-fake/fake
+      limit: 8000
+    - name: deep_vs_real_fake
+      path: data/multisource_raw/Deep-vs-Real/fake
+      limit: 8000
+    - name: deepfake_vs_real_60k_fake
+      path: data/multisource_raw/deepfake-vs-real-60k/fake
+      limit: 8000
+    - name: hardfakes_fake
+      path: data/multisource_raw/real-vs-hardfakes/fake
+      limit: 700

@@ -97,6 +97,13 @@ def add_detector_args(parser: argparse.ArgumentParser):
         help="Dodatkowy margines cropu wokol twarzy jako procent szerokosci i wysokosci bboxu.",
     )
     parser.add_argument(
+        "--crop-style",
+        type=str,
+        default="face",
+        choices=["face", "portrait"],
+        help="Styl cropu: ciasna twarz albo szerszy portret wokol twarzy.",
+    )
+    parser.add_argument(
         "--no-square-crop",
         action="store_true",
         help="Nie wymuszaj kwadratowego cropu twarzy.",
@@ -143,6 +150,7 @@ def detect_and_crop_faces(image_path: Path, detector, args):
         detections,
         margin_ratio=args.margin_ratio,
         square_crop=not args.no_square_crop,
+        crop_style=args.crop_style,
         selection=args.selection,
         max_faces=max_faces,
     )
@@ -201,6 +209,7 @@ def prepare_face_dataset(args):
         "selection": args.selection,
         "max_faces": args.max_faces,
         "margin_ratio": args.margin_ratio,
+        "crop_style": args.crop_style,
         "square_crop": not args.no_square_crop,
         "splits": {},
         "total_images": 0,

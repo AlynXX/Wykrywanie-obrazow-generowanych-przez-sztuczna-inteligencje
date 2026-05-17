@@ -13,7 +13,7 @@ from .face_utils import build_face_detector, detect_faces, extract_face_crops, r
 from .inference import load_model_bundle, predict_with_grad_cam
 
 DEFAULT_CHECKPOINT = Path("models/best_model.pt")
-DEFAULT_FACE_CHECKPOINT = Path("models/faces/best_model.pt")
+DEFAULT_FACE_CHECKPOINT = Path("models/faces_convnext/best_model.pt")
 DEFAULT_CONFIG = Path("config.yaml")
 
 CUSTOM_CSS = """
@@ -175,6 +175,13 @@ def parse_args():
         default=None,
         help="Opcjonalny prog decyzyjny dla klasy fake w modelu twarzowym.",
     )
+    parser.add_argument(
+        "--face-crop-style",
+        type=str,
+        default="face",
+        choices=["face", "portrait"],
+        help="Styl cropu dla modelu twarzowego: ciasna twarz albo szerszy portret.",
+    )
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--share", action="store_true")
@@ -255,7 +262,12 @@ def format_pending_html(message: str, *, title: str) -> str:
     """
 
 
-def detect_primary_face(image: Image.Image, detector) -> tuple[Image.Image | None, Image.Image]:
+def detect_primary_face(
+    image: Image.Image,
+    detector,
+    *,
+    crop_style: str,
+) -> tuple[Image.Image | None, Image.Image]:
     image_rgb = image.convert("RGB")
     image_bgr = cv2.cvtColor(np.array(image_rgb), cv2.COLOR_RGB2BGR)
     detections = detect_faces(
@@ -270,6 +282,7 @@ def detect_primary_face(image: Image.Image, detector) -> tuple[Image.Image | Non
         detections,
         margin_ratio=0.22,
         square_crop=True,
+        crop_style=crop_style,
         selection="largest",
         max_faces=1,
     )
@@ -387,7 +400,12 @@ def build_gallery_update(summary: dict, group_name: str):
     return gr.update(value=items, visible=bool(items))
 
 
-def build_interface(bundle: dict, face_bundle: dict | None = None):
+def build_interface(
+    bundle: dict,
+    face_bundle: dict | None = None,
+    *,
+    face_crop_style: str = "face",
+):
     face_model_status = (
         f"aktywny: {face_bundle['model_name']}" if face_bundle is not None else "niedostepny"
     )
@@ -407,6 +425,7 @@ def build_interface(bundle: dict, face_bundle: dict | None = None):
         <div class="pill">Model globalny: {bundle['model_name']}</div>
         <div class="pill">Model twarzowy: {face_model_status}</div>
         <div class="pill">Prog twarzowy: {face_threshold_label}</div>
+        <div class="pill">Crop twarzowy: {face_crop_style}</div>
         <div class="pill">Rozmiar wejscia: {bundle['image_size']} px</div>
         <div class="pill">Klasy: {", ".join(bundle['class_names'])}</div>
       </div>
@@ -427,7 +446,7 @@ def build_interface(bundle: dict, face_bundle: dict | None = None):
         )
         original_preview = base_image
         face_result_html = format_pending_html(
-            "Model twarzowy nie jest zaladowany. Uruchom demo z checkpointem w models/faces/best_model.pt.",
+            "Model twarzowy nie jest zaladowany. Uruchom demo z checkpointem w models/faces_convnext/best_model.pt.",
             title="Model twarzowy",
         )
         global_overlay_update = image_update(None, False)
@@ -436,7 +455,11 @@ def build_interface(bundle: dict, face_bundle: dict | None = None):
         face_crop_update = image_update(None, False)
 
         if face_bundle is not None:
-            face_image, annotated_preview = detect_primary_face(base_image, face_detector)
+            face_image, annotated_preview = detect_primary_face(
+                base_image,
+                face_detector,
+                crop_style=face_crop_style,
+            )
             original_preview_update = image_update(annotated_preview, True)
             if face_image is None:
                 global_result = predict_with_grad_cam(
@@ -473,7 +496,7 @@ def build_interface(bundle: dict, face_bundle: dict | None = None):
                     intro_text="Ten wynik pochodzi z osobnego modelu wytrenowanego na cropach twarzy.",
                     extra_html=(
                         "<div style='margin-top:14px; color:#50657f;'>"
-                        "Analiza dotyczy najwiekszej wykrytej twarzy na obrazie."
+                        f"Analiza dotyczy najwiekszej wykrytej twarzy na obrazie. Styl cropu: {face_crop_style}."
                         "</div>"
                     ),
                 )
@@ -778,7 +801,11 @@ def main():
             decision_threshold=args.face_threshold,
         )
         face_bundle["checkpoint_path"] = str(args.face_checkpoint)
-    demo = build_interface(bundle, face_bundle=face_bundle)
+    demo = build_interface(
+        bundle,
+        face_bundle=face_bundle,
+        face_crop_style=args.face_crop_style,
+    )
     demo.launch(
         server_name=args.host,
         server_port=args.port,

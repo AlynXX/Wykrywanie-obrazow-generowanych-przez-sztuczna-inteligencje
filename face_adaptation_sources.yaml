@@ -1,0 +1,29 @@
+settings:
+  output_dir: data/face_adaptation
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+    - .webp
+
+sources:
+  fake:
+    - name: gpt_face_new
+      path: data/face_adaptation_sources_crops/train/fake
+      limit: 38
+    - name: legacy_face_fake
+      path: data/deepfake_faces_v2/train/fake
+      limit: 160
+
+  real:
+    - name: real_face_new
+      path: data/face_adaptation_sources_crops/train/real
+      limit: 38
+    - name: legacy_face_real
+      path: data/deepfake_faces_v2/train/real
+      limit: 160

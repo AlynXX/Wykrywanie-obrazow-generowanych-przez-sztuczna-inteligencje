@@ -6,16 +6,19 @@
 Projekt został podzielony na kilka logicznych modułów, z których każdy odpowiada za inny fragment eksperymentu:
 
 \begin{itemize}
-    \item \texttt{dataset.py} -- przygotowanie danych, transformacje i augmentacje,
-    \item \texttt{split\_dataset.py} -- przygotowanie struktury \texttt{train/val/test},
-    \item \texttt{model.py} -- tworzenie modelu na bazie biblioteki \texttt{timm},
-    \item \texttt{train.py} -- trening, checkpointy, metryki i early stopping,
-    \item \texttt{predict.py} oraz \texttt{inference.py} -- inferencja dla pojedynczego obrazu,
-    \item \texttt{robustness\_eval.py} -- test odporności na spadek jakości,
-    \item \texttt{web\_demo.py} -- lokalny interfejs demonstracyjny.
+    \item \texttt{dataset.py} --- przygotowanie danych, transformacje i augmentacje,
+    \item \texttt{split\_dataset.py} --- przygotowanie struktury \texttt{train/val/test},
+    \item \texttt{model.py} --- tworzenie modelu na bazie biblioteki \texttt{timm},
+    \item \texttt{train.py} --- trening, checkpointy, metryki i early stopping,
+    \item \texttt{predict.py} oraz \texttt{inference.py} --- inferencja dla pojedynczego obrazu,
+    \item \texttt{robustness\_eval.py} --- test odporności na spadek jakości,
+    \item \texttt{deepfake\_faces.py} oraz \texttt{face\_utils.py} --- wykrywanie twarzy i przygotowanie cropów,
+    \item \texttt{compare\_face\_models.py} --- porównanie modelu globalnego i twarzowego,
+    \item \texttt{error\_analysis.py} --- analiza błędów i eksport przykładów,
+    \item \texttt{web\_demo.py} --- lokalny interfejs demonstracyjny.
 \end{itemize}
 
-Takie rozdzielenie upraszcza dalszy rozwój projektu, ponieważ kolejny etap związany z deepfake twarzy może zostać dopisany jako osobna ścieżka bez przebudowy całego kodu.
+Takie rozdzielenie upraszcza dalszy rozwój projektu, ponieważ etap globalny i etap twarzowy mogą być rozwijane niezależnie.
 
 \subsection{Dane}
 
@@ -29,9 +32,17 @@ W eksperymentach wykorzystano zbiór danych zorganizowany w klasy \texttt{real} 
 
 Taki podział pozwala oddzielić proces uczenia od strojenia i od finalnej oceny modelu.
 
-\subsection{Model}
+W dalszym etapie przygotowano również:
 
-Jako model bazowy wybrano architekturę \texttt{ResNet18} dostępną w bibliotece \texttt{timm}. Wybór ten wynikał z kilku powodów:
+\begin{itemize}
+    \item curated zbiór portretów do treningu modelu twarzowego,
+    \item mały benchmark OOD z nowymi generatorami GPT i Gemini / Nano2,
+    \item małe zbiory adaptacyjne do prób dostrajania modeli.
+\end{itemize}
+
+\subsection{Model bazowy}
+
+Jako model bazowy wybrano architekturę \texttt{ResNet18} \cite{he2016resnet} dostępną w bibliotece \texttt{timm}. Wybór ten wynikał z kilku powodów:
 
 \begin{itemize}
     \item model jest lekki obliczeniowo i nadaje się do szybkich eksperymentów,
@@ -40,6 +51,18 @@ Jako model bazowy wybrano architekturę \texttt{ResNet18} dostępną w bibliotec
 \end{itemize}
 
 Model przyjmuje obrazy przeskalowane do rozmiaru \texttt{224 x 224} i zwraca prawdopodobieństwo dla dwóch klas: \texttt{fake} oraz \texttt{real}.
+
+\subsection{Etap twarzowy}
+
+Do analizy portretów zastosowano osobny pipeline. Najpierw z obrazu wejściowego wykrywana jest twarz przy użyciu klasyfikatora Haar Cascade \cite{viola2001rapid}, a następnie wycinany jest crop w stylu \texttt{face} lub \texttt{portrait}. Tak przygotowany obraz trafia do osobnego klasyfikatora twarzowego opartego o \texttt{ConvNeXt Tiny} \cite{liu2022convnext}.
+
+Takie rozdzielenie miało umożliwić:
+
+\begin{itemize}
+    \item odciążenie modelu od pełnego kontekstu kadru,
+    \item skupienie analizy na obszarze najbardziej istotnym dla deepfake'ów,
+    \item porównanie zachowania modelu globalnego i wyspecjalizowanego modelu twarzowego.
+\end{itemize}
 
 \subsection{Augmentacje i odporność}
 

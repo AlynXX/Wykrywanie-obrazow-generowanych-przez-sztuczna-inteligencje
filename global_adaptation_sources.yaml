@@ -1,0 +1,32 @@
+settings:
+  output_dir: data/global_adaptation
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+    - .webp
+
+sources:
+  fake:
+    - name: gpt_new
+      path: data/global_adaptation_sources/gpt_fake
+      limit: 40
+    - name: nano2_new
+      path: data/global_adaptation_sources/nano2_fake
+      limit: 40
+    - name: legacy_fake
+      path: data/real_vs_ai/train/fake
+      limit: 160
+
+  real:
+    - name: matched_real_new
+      path: data/global_adaptation_sources/real_matched
+      limit: 40
+    - name: legacy_real
+      path: data/real_vs_ai/train/real
+      limit: 160

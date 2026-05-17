@@ -129,6 +129,21 @@ data/deepfake_faces_crops/
     real/
 ```
 
+Nowy, mocniejszy eksperyment `ConvNeXt v2` moze korzystac z curated miksu wielozrodlowego:
+
+```text
+data/deepfake_faces_v2/
+  train/
+    fake/
+    real/
+  val/
+    fake/
+    real/
+  test/
+    fake/
+    real/
+```
+
 ## Szybki Start
 
 1. Instalacja zaleznosci:
@@ -186,6 +201,11 @@ python -m src.deepfake_faces prepare-dataset --input-dir data/deepfake_faces --o
 ```
 
 Domyslnie skrypt zachowuje tylko najwieksza twarz na obrazie, dodaje margines wokol bboxu i zapisuje manifest do `data/deepfake_faces_crops/face_dataset_manifest.json`.
+Mozesz tez przygotowac szersze cropy portretowe:
+
+```bash
+python -m src.deepfake_faces prepare-dataset --input-dir data/deepfake_faces --output-dir data/deepfake_portraits --crop-style portrait
+```
 
 2. Analiza pojedynczego obrazu z wykryciem twarzy:
 
@@ -205,15 +225,51 @@ python -m src.deepfake_faces inspect --checkpoint models/best_model.pt --image p
 python -m src.train --config config_faces.yaml
 ```
 
-Checkpointy i podsumowanie treningu zapisza sie domyslnie do `models/faces/`.
+Aktualna konfiguracja twarzowa korzysta z `convnext_tiny`.
+Checkpointy i podsumowanie treningu zapisza sie domyslnie do `models/faces_convnext/`.
+
+3a. Zlozenie curated datasetu `ConvNeXt v2` z duzego, roznorodnego zbioru:
+
+Najpierw umiesc wybrane zrodla pod katalogiem `data/multisource_raw/`, zgodnie z plikiem
+`curated_faces_v2_sources.yaml`, a potem uruchom:
+
+```bash
+python -m src.prepare_curated_face_dataset --spec curated_faces_v2_sources.yaml --copy
+```
+
+Domyslnie skrypt sklada kontrolowany miks z:
+- `FFHQ`
+- `Multiface`
+- `140k-real-vs-fake`
+- `Deep-vs-Real`
+- `deepfake-vs-real-60k`
+- `stable_diffusion`
+- `dalle-generated`
+- `real-vs-hardfakes`
+
+Wynik trafi do `data/deepfake_faces_v2/`, a pelny manifest do
+`data/deepfake_faces_v2/curated_dataset_manifest.json`.
+
+3b. Trening `ConvNeXt v2` na curated miksie:
+
+```bash
+python -m src.train --config config_faces_v2.yaml
+```
+
+Checkpointy zapisza sie do `models/faces_convnext_v2/`.
 
 4. Porownanie modelu globalnego i twarzowego na portretach:
 
 ```bash
-python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces/best_model.pt --data-dir data/deepfake_faces --split test
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext/best_model.pt --data-dir data/deepfake_faces --split test
 ```
 
 Raport porownawczy zapisze sie domyslnie do `reports/face_model_comparison.json`, a pelny CSV obok niego.
+Do eksperymentu z szerszym cropem portretowym mozna uzyc:
+
+```bash
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext/best_model.pt --data-dir data/deepfake_faces --split test --crop-style portrait
+```
 
 5. Przygotowanie malego datasetu adaptacyjnego `hard fakes + old real`:
 
@@ -230,7 +286,7 @@ Wszystkie przypisania zapisze tez do `adaptation_manifest.json`.
 6. Fine-tuning modelu twarzowego na `hard fakes`:
 
 ```bash
-python -m src.train --config config_hard_fakes.yaml --init-checkpoint models/faces/best_model.pt
+python -m src.train --config config_hard_fakes.yaml --init-checkpoint models/faces_convnext/best_model.pt
 ```
 
 Ta komenda startuje od wag najlepszego modelu twarzowego, ale nie przenosi historii, optimizera ani starego `best_val_score`, wiec nadaje sie do czystego eksperymentu adaptacyjnego.
@@ -238,7 +294,7 @@ Ta komenda startuje od wag najlepszego modelu twarzowego, ale nie przenosi histo
 7. Strojenie progu decyzyjnego dla modelu adaptacyjnego:
 
 ```bash
-python -m src.tune_threshold --checkpoint models/faces_hard_adapt/best_model.pt --config config_hard_fakes.yaml --tune-split val --eval-split test --metric f1_positive
+python -m src.tune_threshold --checkpoint models/faces_convnext_hard_adapt/best_model.pt --config config_hard_fakes.yaml --tune-split val --eval-split test --metric f1_positive
 ```
 
 Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy prog dla klasy `fake`.
@@ -246,11 +302,261 @@ Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy prog dla k
 8. Uzycie progu w predykcji lub GUI:
 
 ```bash
-python -m src.predict --checkpoint models/faces_hard_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
+python -m src.predict --checkpoint models/faces_convnext_hard_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
 ```
 
 ```bash
-python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_hard_adapt/best_model.pt --face-threshold 0.62
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --face-threshold 0.62
+```
+
+9. Przygotowanie zewnetrznego benchmarku Gemini:
+
+```bash
+python -m src.prepare_gemini_benchmark --fake-dir data/gemini_benchmark_sources/fake --real-dir data/gemini_benchmark_sources/real --output-dir data/gemini_benchmark --copy
+```
+
+Domyslnie skrypt zbuduje split `test/` i dobierze tyle samo `real`, ile dostepnych `fake`.
+
+10. Ewaluacja na benchmarku Gemini:
+
+```bash
+python -m src.error_analysis --checkpoint models/best_model.pt --config config_gemini_benchmark.yaml --split test --output-dir reports/gemini_global
+```
+
+```bash
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --data-dir data/gemini_benchmark --split test --crop-style portrait --output-path reports/gemini_face_vs_global.json
+```
+
+## Pilotowy Benchmark OOD
+
+Jesli chcesz szybko sprawdzic, czy model gubi najnowsze generatory bez recznego budowania duzego datasetu, w repo jest przygotowany maly workflow pilota:
+
+1. Gotowa pula promptow startowych:
+
+```text
+pilot_ood_prompt_pool.csv
+```
+
+2. Prosty arkusz do odhaczania probek:
+
+```text
+pilot_ood_samples_template.csv
+```
+
+3. Domyslna struktura surowych folderow:
+
+```text
+data/ood_sources/
+  gpt_fake/
+  nano2_fake/
+  real_matched/
+```
+
+4. Domyslna specyfikacja pilota:
+
+```text
+pilot_ood_benchmark_sources.yaml
+```
+
+Domyslnie pilot sklada benchmark `test` z:
+- `gpt_fake=20`
+- `nano2_fake=20`
+- `real_matched=40`
+
+5. Zlozenie benchmarku jedna komenda:
+
+```bash
+python -m src.prepare_ood_benchmark --spec pilot_ood_benchmark_sources.yaml --copy
+```
+
+Wynik trafi do:
+
+```text
+data/ood_pilot_benchmark/
+  test/
+    fake/
+    real/
+```
+
+Skrypt zapisze tez manifest do:
+
+```text
+data/ood_pilot_benchmark/ood_benchmark_manifest.json
+```
+
+Nazwy eksportowanych plikow zachowuja prefiks zrodla, np. `gpt__...` albo `nano2__...`, wiec po ewaluacji latwo policzyc wyniki per generator.
+
+6. Ewaluacja modelu globalnego na pilocie:
+
+```bash
+python -m src.error_analysis --checkpoint models/best_model.pt --config config_gemini_benchmark.yaml --data-dir data/ood_pilot_benchmark --split test --output-dir reports/ood_pilot_global
+```
+
+7. Porownanie modelu globalnego i twarzowego:
+
+```bash
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --data-dir data/ood_pilot_benchmark --split test --crop-style portrait --output-path reports/ood_pilot_face_vs_global.json
+```
+
+## Opcja A: Adaptacja Modelu Globalnego
+
+Jesli chcesz szybko pokazac postep na nowych generatorach, najprostsza sciezka to dostrojenie modelu globalnego na nowych `GPT/Nano2 + real`, ale bez naruszania zamrozonego benchmarku `ood_pilot_benchmark`.
+
+1. Zostaw `data/ood_pilot_benchmark/` tylko do finalnej ewaluacji.
+
+2. Zbierz osobny surowy material adaptacyjny do:
+
+```text
+data/global_adaptation_sources/
+  gpt_fake/
+  nano2_fake/
+  real_matched/
+```
+
+To powinny byc nowe obrazy, inne niz te uzyte w `ood_pilot_benchmark`.
+
+3. Specyfikacja adaptacji jest gotowa w:
+
+```text
+global_adaptation_sources.yaml
+```
+
+Domyslnie laczy:
+- nowe `gpt_fake`
+- nowe `nano2_fake`
+- nowe `real_matched`
+- ograniczona domieszke starego `legacy_fake` z `data/real_vs_ai/train/fake`
+- ograniczona domieszke starego `legacy_real` z `data/real_vs_ai/train/real`
+
+4. Zlozenie datasetu adaptacyjnego:
+
+```bash
+python -m src.prepare_global_adaptation_dataset --spec global_adaptation_sources.yaml --copy
+```
+
+Wynik trafi do:
+
+```text
+data/global_adaptation/
+  train/
+    fake/
+    real/
+  val/
+    fake/
+    real/
+  test/
+    fake/
+    real/
+```
+
+5. Gotowy config fine-tuningu:
+
+```text
+config_global_adaptation.yaml
+```
+
+6. Fine-tuning modelu globalnego od istniejacego checkpointu:
+
+```bash
+python -m src.train --config config_global_adaptation.yaml --init-checkpoint models/best_model.pt
+```
+
+Checkpoint adaptacyjny zapisze sie domyslnie do:
+
+```text
+models/global_ood_adapt/
+```
+
+7. Opcjonalne strojenie progu dla nowego modelu:
+
+```bash
+python -m src.tune_threshold --checkpoint models/global_ood_adapt/best_model.pt --config config_global_adaptation.yaml --tune-split val --eval-split test --metric f1_positive
+```
+
+8. Finalna ewaluacja na zamrozonym benchmarku pilota:
+
+```bash
+python -m src.error_analysis --checkpoint models/global_ood_adapt/best_model.pt --config config_gemini_benchmark.yaml --data-dir data/ood_pilot_benchmark --split test --output-dir reports/ood_pilot_global_adapted
+```
+
+Jesli po strojeniu progu chcesz uzyc konkretnej wartosci dla klasy `fake`, mozesz potem podac ja jawnie w `src.predict` albo `src.web_demo` przez `--threshold`.
+
+## Kolejny Krok: Adaptacja Modelu Twarzowego
+
+Jesli po etapie diagnostycznym uznasz, ze glownym kierunkiem rozwoju powinien byc model twarzowy, repo ma teraz tez gotowy workflow pod ten wariant.
+
+1. Zbierz surowe portrety do:
+
+```text
+data/face_adaptation_sources_raw/
+  fake/
+  real/
+```
+
+To powinny byc nowe obrazy `GPT/Nano2 + real`, inne niz benchmark testowy.
+
+2. Wytnij twarze do osobnego katalogu cropow:
+
+```bash
+python -m src.deepfake_faces prepare-dataset --input-dir data/face_adaptation_sources_raw --output-dir data/face_adaptation_sources_crops --crop-style face
+```
+
+Jesli chcesz porownac szersze ujecia, mozesz zamiast tego uzyc `--crop-style portrait`, ale najczystszy pierwszy eksperyment adaptacyjny warto zrobic na `face`.
+
+3. Specyfikacja miksu adaptacyjnego:
+
+```text
+face_adaptation_sources.yaml
+```
+
+Domyslnie laczy:
+- nowe cropy `fake` z `data/face_adaptation_sources_crops/fake`
+- nowe cropy `real` z `data/face_adaptation_sources_crops/real`
+- domieszke starszych danych z `data/deepfake_faces_v2/train`
+
+4. Zlozenie datasetu adaptacyjnego:
+
+```bash
+python -m src.prepare_face_adaptation_dataset --spec face_adaptation_sources.yaml --copy
+```
+
+Wynik trafi do:
+
+```text
+data/face_adaptation/
+  train/
+    fake/
+    real/
+  val/
+    fake/
+    real/
+  test/
+    fake/
+    real/
+```
+
+5. Gotowy config fine-tuningu modelu twarzowego:
+
+```text
+config_face_adaptation.yaml
+```
+
+6. Fine-tuning od obecnego checkpointu `ConvNeXt v2`:
+
+```bash
+python -m src.train --config config_face_adaptation.yaml --init-checkpoint models/faces_convnext_v2/best_model.pt
+```
+
+Checkpoint zapisze sie domyslnie do:
+
+```text
+models/faces_convnext_v2_adapt/
+```
+
+7. Finalna ewaluacja na benchmarku portretowym:
+
+```bash
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt --data-dir data/ood_pilot_benchmark --split test --crop-style face --output-path reports/ood_pilot_face_vs_global_v2_adapt.json
 ```
 
 ## Analiza Bledow
@@ -283,7 +589,13 @@ python -m src.web_demo --checkpoint models/best_model.pt
 Jesli dostepny jest tez model twarzowy, demo moze pokazac oba etapy projektu naraz:
 
 ```bash
-python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces/best_model.pt
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext/best_model.pt
+```
+
+Mozesz tez przetestowac szerszy crop portretowy:
+
+```bash
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --face-threshold 0.62 --face-crop-style portrait
 ```
 
 Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.

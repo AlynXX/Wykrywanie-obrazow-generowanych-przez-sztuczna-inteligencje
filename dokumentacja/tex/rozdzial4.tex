@@ -20,6 +20,7 @@ W trakcie pracy dodano także mechanizmy praktyczne, które okazały się istotn
     \item \texttt{early stopping},
     \item checkpointy \texttt{best\_model.pt}, \texttt{last\_checkpoint.pt} i \texttt{interrupted\_checkpoint.pt},
     \item obsługę treningu na GPU z wykorzystaniem \texttt{AMP},
+    \item automatyczny dobór rozmiaru batcha,
     \item lepsze ustawienia loadera pod Windows i CUDA.
 \end{itemize}
 
@@ -59,6 +60,29 @@ Następnie przeprowadzono drugi trening z mocniejszymi augmentacjami odporności
 
 Wariant ten okazał się minimalnie słabszy na czystym zbiorze testowym, ale lepiej przygotowany do dalszych analiz odporności.
 
+\subsection{Etap twarzowy}
+
+W drugim etapie projektu przygotowano osobną ścieżkę analizy portretów i cropów twarzy. W praktyce oznacza to:
+
+\begin{itemize}
+    \item automatyczne wykrycie twarzy klasyfikatorem Haar Cascade,
+    \item zapis cropu w stylu \texttt{face} albo \texttt{portrait},
+    \item trening osobnego modelu twarzowego niezależnego od klasyfikatora globalnego,
+    \item możliwość porównania modelu globalnego i modelu twarzowego na tym samym zbiorze portretów.
+\end{itemize}
+
+Wariant twarzowy został oparty o architekturę \texttt{ConvNeXt Tiny}. Dla curated miksu wieloźródłowego uzyskano bardzo dobre wyniki na danych zbliżonych do treningowych:
+
+\begin{itemize}
+    \item Accuracy: 0.9763,
+    \item Precision Macro: 0.9765,
+    \item Recall Macro: 0.9763,
+    \item F1 Macro: 0.9763,
+    \item ROC-AUC: 0.9982.
+\end{itemize}
+
+Pokazało to, że dla klasycznych danych portretowych model twarzowy może być bardzo skuteczny, ale nie przesądza jeszcze o jego odporności na nowe generatory obrazów.
+
 \subsection{Test odporności}
 
 Dla aktualnego modelu przeprowadzono osobny test odporności na spadek jakości obrazu. Sprawdzono między innymi przypadki:
@@ -80,6 +104,112 @@ Najważniejsze obserwacje były następujące:
 
 Pokazuje to, że model jest już w pewnym stopniu odporny na pogorszenie jakości, ale nadal pozostaje wrażliwy na obrazy bardzo mocno skompresowane.
 
+\subsection{Benchmark OOD dla nowych generatorów}
+
+Aby sprawdzić, czy modele generalizują poza główny rozkład treningowy, przygotowano mały benchmark OOD złożony z:
+
+\begin{itemize}
+    \item 20 obrazów wygenerowanych przez GPT,
+    \item 20 obrazów wygenerowanych przez Gemini / Nano2,
+    \item 40 prawdziwych zdjęć portretowych dobranych tak, aby stylistycznie przypominały obrazy syntetyczne.
+\end{itemize}
+
+Benchmark ten nie był częścią głównego zbioru treningowego. Jego celem było możliwie uczciwe sprawdzenie, jak modele zachowują się na nowszych generatorach i bardziej współczesnych portretach. W praktyce był to więc mały test zewnętrzny, pozwalający sprawdzić nie tylko skuteczność klasyfikacji, ale także odporność na przesunięcie rozkładu danych.
+
+Na tym benchmarku model globalny uzyskał:
+
+\begin{itemize}
+    \item Accuracy: 0.7125,
+    \item Precision Macro: 0.7934,
+    \item Recall Macro: 0.7125,
+    \item F1 Macro: 0.6912,
+    \item ROC-AUC: 0.8413.
+\end{itemize}
+
+Macierz pomyłek pokazała istotną asymetrię:
+
+\begin{itemize}
+    \item 39 z 40 obrazów \texttt{fake} zostało wykrytych poprawnie,
+    \item tylko 18 z 40 obrazów \texttt{real} zostało rozpoznanych poprawnie,
+    \item aż 22 prawdziwe zdjęcia zostały oznaczone jako \texttt{fake}.
+\end{itemize}
+
+Wniosek z tego etapu jest ważny: model globalny nie zawodził głównie na nowych obrazach syntetycznych, lecz na nowych realistycznych portretach, dla których generował zbyt wiele fałszywych alarmów.
+
+\subsection{Tabela zbiorcza wyników}
+
+Najważniejsze wyniki eksperymentów zestawiono w tabeli \ref{tab:wyniki-zbiorcze}. Pozwala ona porównać modele nie tylko na danych zbliżonych do treningowych, ale również na małym benchmarku OOD oraz po krótkiej adaptacji modelu twarzowego.
+
+\begin{table}[H]
+\centering
+\caption{Zbiorcze wyniki najważniejszych eksperymentów}
+\label{tab:wyniki-zbiorcze}
+\begin{tabular}{|p{4.3cm}|c|c|c|}
+\hline
+\textbf{Wariant} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{ROC-AUC} \\
+\hline
+Model globalny -- baseline test & 0.9339 & 0.9339 & 0.9831 \\
+\hline
+Model globalny -- wariant robust & 0.9268 & 0.9267 & 0.9804 \\
+\hline
+Model twarzowy \texttt{ConvNeXt Tiny} -- curated test & 0.9763 & 0.9763 & 0.9982 \\
+\hline
+Model globalny -- benchmark OOD & 0.7125 & 0.6912 & 0.8413 \\
+\hline
+Model twarzowy przed adaptacją -- OOD (wykryte twarze) & ok. 0.51 & ok. 0.49 & ok. 0.52 \\
+\hline
+Model twarzowy po adaptacji -- test wewnętrzny & 0.8548 & 0.8548 & 0.9469 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Analiza jakościowa błędów}
+
+Same metryki nie pokazują jeszcze, \emph{jakiego rodzaju} obrazy są problematyczne. Dlatego wykonano również analizę jakościową przypadków błędnych klasyfikacji.
+
+Na rysunku \ref{fig:ood-false-positive} pokazano przykład fałszywego alarmu modelu globalnego na prawdziwym portrecie. Tego typu przypadki były częste w benchmarku OOD i sugerowały, że model nauczył się częściowo traktować estetyczne, czyste portrety jako obrazy podejrzane.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.42\textwidth]{../reports/ood_pilot_global/test/examples/false_positive/04__gt_real__pred_fake__real_matched_real__0002__pexels-a-darmel-8158953_jpg.jpg}
+\caption{Przykład false positive na benchmarku OOD: prawdziwy portret sklasyfikowany jako \texttt{fake}}
+\label{fig:ood-false-positive}
+\end{figure}
+
+Na rysunku \ref{fig:ood-false-negative} pokazano odwrotny przypadek, czyli obraz syntetyczny wygenerowany przez GPT, który został oznaczony jako \texttt{real}. Takie próbki były rzadsze niż false positive modelu globalnego, ale bardzo istotne z punktu widzenia wiarygodności systemu.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.42\textwidth]{../reports/ood_pilot_global/test/examples/false_negative/01__gt_fake__pred_real__fake_gpt__0016__gpt__p017__01_png.png}
+\caption{Przykład false negative na benchmarku OOD: obraz syntetyczny sklasyfikowany jako \texttt{real}}
+\label{fig:ood-false-negative}
+\end{figure}
+
+Takie przykłady potwierdzają, że problem generalizacji nie dotyczy wyłącznie pojedynczych metryk, ale ma również wymiar jakościowy: modele potrafią mylić się na wizualnie przekonujących portretach nawet wtedy, gdy na danych wewnętrznych osiągają bardzo wysokie wyniki.
+
+\subsection{Wyniki modelu twarzowego na nowych portretach}
+
+Porównanie wcześniejszych checkpointów twarzowych z benchmarkiem OOD pokazało, że sam dobry wynik na danych wewnętrznych nie wystarcza do poprawnej generalizacji na nowsze obrazy. Przed adaptacją:
+
+\begin{itemize}
+    \item wariant \texttt{faces\_hard\_adapt} uzyskał Accuracy około 0.48 na podzbiorze z wykrytą twarzą,
+    \item wariant \texttt{faces\_convnext\_v2} uzyskał Accuracy około 0.51 na tym samym benchmarku.
+\end{itemize}
+
+Oznacza to, że pierwotna wersja modelu twarzowego nie generalizowała poprawnie na najnowsze fotorealistyczne obrazy GPT / Gemini.
+
+W dalszym kroku wykonano mały fine-tuning modelu \texttt{faces\_convnext\_v2} na cropach twarzy przygotowanych z nowych obrazów. Na wewnętrznym teście adaptacyjnym uzyskano:
+
+\begin{itemize}
+    \item Accuracy: 0.8548,
+    \item Precision Macro: 0.8552,
+    \item Recall Macro: 0.8548,
+    \item F1 Macro: 0.8548,
+    \item ROC-AUC: 0.9469.
+\end{itemize}
+
+Wynik ten należy jednak interpretować ostrożnie, ponieważ dotyczy niewielkiego zbioru adaptacyjnego, a ręczne testy w interfejsie nadal pokazywały trudne przypadki, w których nowe obrazy syntetyczne były klasyfikowane jako \texttt{real}. Oznacza to, że adaptacja poprawiła zachowanie modelu, ale nie rozwiązała jeszcze problemu w sposób pełny.
+
 \subsection{Interfejs demonstracyjny}
 
 W celu zwiększenia użyteczności projektu przygotowano lokalne demo webowe w \texttt{Gradio}. Aplikacja umożliwia:
@@ -89,7 +219,8 @@ W celu zwiększenia użyteczności projektu przygotowano lokalne demo webowe w \
     \item wyświetlenie predykcji \texttt{real/fake},
     \item pokazanie pewności modelu,
     \item wygenerowanie mapy Grad-CAM,
-    \item pokazanie ostrzeżenia przy niskiej jakości obrazu.
+    \item pokazanie ostrzeżenia przy niskiej jakości obrazu,
+    \item porównanie predykcji modelu globalnego i modelu twarzowego dla portretów.
 \end{itemize}
 
 Interfejs ten ma charakter demonstracyjny i stanowi przydatne narzędzie do ręcznej analizy zachowania modelu.

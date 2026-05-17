@@ -1,41 +1,40 @@
-﻿\newpage
+\newpage
 \section{Cel projektu}
 
-Celem projektu jest stworzenie systemu wykrywania obrazów generowanych przez sztuczną inteligencję. System ten będzie wykorzystywał zaawansowane algorytmy uczenia maszynowego do analizy cech wizualnych i identyfikacji obrazów, które zostały wygenerowane przez modele sztucznej inteligencji, takie jak klasyczne sieci GAN (Generative Adversarial Networks) oraz współcześnie dominujące modele dyfuzyjne (np. Stable Diffusion, Midjourney). Projekt kładzie szczególny nacisk na obronę przed cyberzagrożeniami. Rozwiązanie to ma na celu identyfikację prób dezinformacji, oszustw tożsamościowych (np. wizualny phishing) oraz potencjalnych manipulacji cyfrowym materiałem dowodowym. Narzędzia te znajdą zastosowanie m.in. w mediach społecznościowych i systemach bezpieczeństwa.
+Celem projektu jest stworzenie systemu wykrywania obrazów generowanych przez sztuczną inteligencję. System wykorzystuje metody uczenia maszynowego do analizy cech wizualnych i identyfikacji obrazów, które zostały wygenerowane przez modele generatywne. W kontekście współczesnych zagrożeń problem ten ma znaczenie praktyczne między innymi dla wykrywania dezinformacji, podszywania się pod inne osoby oraz obniżania wiarygodności obrazu jako nośnika informacji. W projekcie uwzględniono zarówno klasyczny etap \texttt{real vs fake}, jak i osobny etap twarzowy, przeznaczony do analizy portretów i potencjalnych deepfake'ów.
 
 \subsection{Zakres projektu}
 
-Zakres projektu obejmuje zaprojektowanie oraz weryfikację systemu, który klasyfikuje obrazy na prawdziwe i wygenerowane przez AI. Prace obejmują analizę artefaktów charakterystycznych dla modeli generatywnych, przygotowanie danych oraz ocenę skuteczności w warunkach zbliżonych do rzeczywistych. W ramach projektu przewidziano również wstępny scenariusz wykrywania deepfake na twarzach.
+Zakres projektu obejmuje zaprojektowanie, implementację oraz weryfikację systemu, który klasyfikuje obrazy na prawdziwe i wygenerowane przez AI. Prace objęły przygotowanie danych, budowę modeli, analizę odporności oraz sprawdzenie zachowania modeli na danych spoza głównego rozkładu treningowego.
 
 \begin{itemize}
-    \item analiza i identyfikacja typowych artefaktów generatywnych (np. nienaturalne renderowanie mikrotekstur, niespójności geometryczne, błędy morfologiczne w detalach czy specyficzne wzorce w domenie częstotliwościowej),
-    \item przygotowanie zbioru danych i podział na zbiory treningowy, walidacyjny i testowy,
-    \item implementacja i porównanie wybranych modeli (np. CNN / ViT),
-    \item ocena skuteczności na znanych oraz nowszych, niewidzianych wcześniej generatorach obrazów,
-    \item wstępny pipeline dla deepfake: wydzielanie regionu twarzy (ROI) za pomocą detekcji i jej wąska klasyfikacja pod kątem sztucznych modyfikacji,
-    \item analiza opłacalności systemowej, ryzyka manipulacji oraz aspektów etycznych działania takich modeli.
+    \item przygotowanie zbiorów danych i ich podział na zbiory treningowy, walidacyjny i testowy,
+    \item implementacja modelu globalnego opartego o klasyfikację całego obrazu,
+    \item implementacja osobnego etapu twarzowego z wykrywaniem twarzy i klasyfikacją cropów,
+    \item przygotowanie benchmarku OOD dla nowszych generatorów obrazów,
+    \item analiza skuteczności, odporności oraz ograniczeń modeli,
+    \item przygotowanie lokalnego interfejsu demonstracyjnego do ręcznych testów i analizy wyników.
 \end{itemize}
 
 \subsection{Wymagania funkcjonalne}
 
 \begin{itemize}
-    \item wczytanie danych z ustalonej struktury katalogów (train/val/test),
+    \item wczytanie danych z ustalonej struktury katalogów \texttt{train/val/test},
     \item konfiguracja parametrów treningu i modelu z pliku konfiguracyjnego,
-    \item preprocessing obrazów oraz wdrożenie augmentacji uodparniających system na popularne techniki zacierania śladów generatywnych (np. kompresja obrazu, szum, skalowanie dół-góra),
+    \item preprocessing obrazów oraz wdrożenie augmentacji uodparniających system na popularne degradacje jakości,
     \item trening modelu oraz zapis najlepszego checkpointu,
-    \item ewaluacja modelu i raport metryk (Accuracy, Precision, Recall, F1, ROC-AUC),
-    \item automatyczne wydzielanie samego rejonu twarzy (Face Cropping) i podsyłanie do dedykowanego ewaluatora autentyczności,
-    \item wizualizacja przesłanek decyzyjnych modelu poprzez generowanie map uczuleń dla wskazanych fragmentów obrazu (mechanizmy eXplainable AI, np. Grad-CAM).
+    \item ewaluacja modelu i raport metryk \texttt{Accuracy}, \texttt{Precision}, \texttt{Recall}, \texttt{F1} i \texttt{ROC-AUC},
+    \item automatyczne wydzielanie rejonu twarzy i podanie go do dedykowanego modelu twarzowego,
+    \item wizualizacja przesłanek decyzyjnych modelu przy użyciu map Grad-CAM \cite{selvaraju2017gradcam}.
 \end{itemize}
 
 \subsection{Wymagania niefunkcjonalne}
 
 \begin{itemize}
-    \item przenośność - możliwość uruchomienia na środowisku Windows/Linux,
-    \item wydajność - wsparcie dla akceleracji GPU i rozsądny czas trenowania dla ograniczonego progu godzinowego,
-    \item niski czas odpowiedzi modelu (latency) na pojedynczej próbce, co jest wymagane w narzędziach pracujących w systemach analizy dużych strumieni danych obrazowych,
-    \item odtwarzalność - zapisywanie konfiguracji i hiperparametrów eksperymentu,
-    \item niezawodność - czytelne zarządzanie wyjątkami w aplikacjach końcowych (np. błąd z powodu braku twarzy do ekstrakcji na zdjęciu),
-    \item interpretowalność - możliwość naocznej analizy logiki decyzyjnej za pomocą wizualnych map trafień,
-    \item bezpieczeństwo - przetwarzanie krytycznych danych (dowody, twarze) w pełni lokalnie bez połączeń sieciowych, zapewniając ich poufność.
+    \item przenośność --- możliwość uruchomienia na środowisku Windows/Linux,
+    \item wydajność --- wsparcie dla akceleracji GPU i rozsądny czas trenowania,
+    \item odtwarzalność --- zapisywanie konfiguracji, checkpointów i podsumowań eksperymentów,
+    \item niezawodność --- czytelne zarządzanie wyjątkami, np. w przypadku braku wykrytej twarzy,
+    \item interpretowalność --- możliwość ręcznej analizy logiki decyzyjnej modelu,
+    \item bezpieczeństwo --- lokalne przetwarzanie danych bez konieczności wysyłania obrazów do usług zewnętrznych.
 \end{itemize}

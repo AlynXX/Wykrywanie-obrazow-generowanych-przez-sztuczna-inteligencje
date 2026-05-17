@@ -1,0 +1,5 @@
+sample_id,generator_family,source_bucket,prompt_id,prompt_text,local_filename,status,notes
+1,gpt,gpt_fake,P001,"A realistic close-up smartphone selfie of a woman in natural window light, subtle skin texture, casual indoor background, unretouched photo, shallow depth of field",gpt__P001__01.png,pending,
+2,gpt,gpt_fake,P002,"A realistic close-up smartphone selfie of a man in natural window light, subtle skin texture, apartment background, unretouched photo, shallow depth of field",gpt__P002__01.png,pending,
+3,nano2,nano2_fake,P001,"A realistic close-up smartphone selfie of a woman in natural window light, subtle skin texture, casual indoor background, unretouched photo, shallow depth of field",nano2__P001__01.png,pending,
+4,nano2,nano2_fake,P002,"A realistic close-up smartphone selfie of a man in natural window light, subtle skin texture, apartment background, unretouched photo, shallow depth of field",nano2__P002__01.png,pending,

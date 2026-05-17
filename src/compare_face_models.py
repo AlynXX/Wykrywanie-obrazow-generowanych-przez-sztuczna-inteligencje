@@ -29,6 +29,13 @@ def parse_args():
     parser.add_argument("--scale-factor", type=float, default=1.1)
     parser.add_argument("--min-neighbors", type=int, default=5)
     parser.add_argument("--margin-ratio", type=float, default=0.22)
+    parser.add_argument(
+        "--crop-style",
+        type=str,
+        default="face",
+        choices=["face", "portrait"],
+        help="Styl cropu dla modelu twarzowego.",
+    )
     parser.add_argument("--no-square-crop", action="store_true")
     return parser.parse_args()
 
@@ -161,6 +168,7 @@ def main():
                 detections,
                 margin_ratio=args.margin_ratio,
                 square_crop=not args.no_square_crop,
+                crop_style=args.crop_style,
                 selection="largest",
                 max_faces=1,
             )
@@ -234,6 +242,7 @@ def main():
         "data_dir": str(args.data_dir),
         "global_checkpoint": str(args.global_checkpoint),
         "face_checkpoint": str(args.face_checkpoint),
+        "crop_style": args.crop_style,
         "class_names": class_names,
         "counts": {
             "total_images": total_images,

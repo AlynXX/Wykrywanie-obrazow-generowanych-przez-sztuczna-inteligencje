@@ -1,9 +1,9 @@
 data:
   data_dir: data/hard_fakes_adaptation
-  output_dir: models/faces_hard_adapt
+  output_dir: models/faces_convnext_hard_adapt
 
 model:
-  model_name: resnet18
+  model_name: convnext_tiny
   pretrained: true
   image_size: 224
 
@@ -28,7 +28,7 @@ runtime:
 auto_batch:
   enabled: true
   cache_enabled: true
-  cache_path: models/faces_hard_adapt/auto_batch_compiled_cache.json
+  cache_path: models/faces_convnext_hard_adapt/auto_batch_compiled_cache.json
   cache_max_entries: 200
   cache_max_age_hours: 168
   min_batch: 2
