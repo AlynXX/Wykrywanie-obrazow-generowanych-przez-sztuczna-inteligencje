@@ -173,7 +173,7 @@ def parse_args():
         "--face-threshold",
         type=float,
         default=None,
-        help="Opcjonalny prog decyzyjny dla klasy fake w modelu twarzowym.",
+        help="Opcjonalny próg decyzyjny dla klasy fake w modelu twarzowym.",
     )
     parser.add_argument(
         "--face-crop-style",
@@ -192,7 +192,7 @@ def format_result_html(
     result: dict,
     *,
     title: str = "Wynik analizy",
-    intro_text: str = "Grad-CAM wskazuje, na ktorych obszarach obrazu model opieral decyzje.",
+    intro_text: str = "Grad-CAM wskazuje, na których obszarach obrazu model opierał decyzję.",
     extra_html: str = "",
 ) -> str:
     bars = []
@@ -209,16 +209,16 @@ def format_result_html(
         reasons = ", ".join(quality.get("reasons", []))
         warning_html = f"""
         <div class="warning-box">
-          <div style="font-weight:700;">Uwaga: obraz ma oznaki niskiej jakosci.</div>
+          <div style="font-weight:700;">Uwaga: obraz ma oznaki niskiej jakości.</div>
           <div style="margin-top:6px;">
-            W takich przypadkach model latwiej myli prawdziwe zdjecia z obrazami AI.
+            W takich przypadkach model łatwiej myli prawdziwe zdjęcia z obrazami AI.
           </div>
           <div style="margin-top:8px;">
             Powody: <strong>{reasons}</strong>
           </div>
           <div style="margin-top:8px;">
-            Rozdzielczosc: <strong>{quality['width']} x {quality['height']}</strong>,
-            ostrosc: <strong>{quality['blur_score']:.1f}</strong>,
+            Rozdzielczość: <strong>{quality['width']} x {quality['height']}</strong>,
+            ostrość: <strong>{quality['blur_score']:.1f}</strong>,
             kontrast: <strong>{quality['contrast_score']:.1f}</strong>
           </div>
         </div>
@@ -232,7 +232,7 @@ def format_result_html(
         <span class="score-strong">{result['predicted_label']}</span>
       </div>
       <div style="margin-top:6px; color:#17324d;">
-        Pewnosc modelu: <strong>{result['confidence'] * 100:.2f}%</strong>
+        Pewność modelu: <strong>{result['confidence'] * 100:.2f}%</strong>
       </div>
       <div style="margin-top:14px; color:#50657f;">
         {intro_text}
@@ -241,7 +241,7 @@ def format_result_html(
         {''.join(bars)}
       </table>
       <div style="margin-top:14px; color:#50657f;">
-        Warstwa wyjasniajaca: <strong>{result['target_layer']}</strong>
+        Warstwa wyjaśniająca: <strong>{result['target_layer']}</strong>
       </div>
       {extra_html}
       {warning_html}
@@ -337,7 +337,7 @@ def format_analysis_html(summary: dict) -> str:
             )
         matrix_html = f"""
         <div style="margin-top:18px;">
-          <div style="font-weight:700; margin-bottom:8px;">Macierz pomylek</div>
+          <div style="font-weight:700; margin-bottom:8px;">Macierz pomyłek</div>
           <table style="width:100%; border-collapse:collapse;">
             <thead>
               <tr>
@@ -355,12 +355,12 @@ def format_analysis_html(summary: dict) -> str:
     return f"""
     <div class="result-box">
       <div style="font-size:0.92rem; color:#50657f; text-transform:uppercase; letter-spacing:0.08em;">
-        Raport analizy bledow
+        Raport analizy błędów
       </div>
       <div style="margin-top:10px; color:#17324d;">
         Split: <strong>{summary['split']}</strong> |
-        probki: <strong>{summary['num_samples']}</strong> |
-        bledy: <strong>{summary['num_errors']}</strong> |
+        próbki: <strong>{summary['num_samples']}</strong> |
+        błędy: <strong>{summary['num_errors']}</strong> |
         filtr klasy: <strong>{summary.get('filter_class', 'all')}</strong> |
         sortowanie: <strong>{summary.get('sort_mode', 'default')}</strong>
       </div>
@@ -370,7 +370,7 @@ def format_analysis_html(summary: dict) -> str:
           <table style="width:100%; border-collapse:collapse;">{''.join(metric_rows)}</table>
         </div>
         <div>
-          <div style="font-weight:700; margin-bottom:8px;">Liczba przypadkow</div>
+          <div style="font-weight:700; margin-bottom:8px;">Liczba przypadków</div>
           <table style="width:100%; border-collapse:collapse;">{''.join(group_rows)}</table>
         </div>
       </div>
@@ -407,7 +407,7 @@ def build_interface(
     face_crop_style: str = "face",
 ):
     face_model_status = (
-        f"aktywny: {face_bundle['model_name']}" if face_bundle is not None else "niedostepny"
+        f"aktywny: {face_bundle['model_name']}" if face_bundle is not None else "niedostępny"
     )
     face_threshold = face_bundle.get("decision_threshold") if face_bundle is not None else None
     face_threshold_label = (
@@ -416,17 +416,17 @@ def build_interface(
     face_detector = build_face_detector() if face_bundle is not None else None
     title_html = f"""
     <div class="hero-card">
-      <h1 class="hero-title">Detektor obrazow AI</h1>
+      <h1 class="hero-title">Detektor obrazów AI</h1>
       <p class="hero-subtitle">
-        Wgraj obraz, aby sprawdzic, czy model traktuje go jako prawdziwe zdjecie czy syntetyczna falszywke.
-        Demo pokazuje teraz dwa etapy projektu: model globalny dla calego obrazu i model twarzowy dla wykrytej twarzy.
+        Wgraj obraz, aby sprawdzić, czy model traktuje go jako prawdziwe zdjęcie czy syntetyczną fałszywkę.
+        Demo pokazuje teraz dwa etapy projektu: model globalny dla całego obrazu i model twarzowy dla wykrytej twarzy.
       </p>
       <div class="pill-row">
         <div class="pill">Model globalny: {bundle['model_name']}</div>
         <div class="pill">Model twarzowy: {face_model_status}</div>
-        <div class="pill">Prog twarzowy: {face_threshold_label}</div>
+        <div class="pill">Próg twarzowy: {face_threshold_label}</div>
         <div class="pill">Crop twarzowy: {face_crop_style}</div>
-        <div class="pill">Rozmiar wejscia: {bundle['image_size']} px</div>
+        <div class="pill">Rozmiar wejścia: {bundle['image_size']} px</div>
         <div class="pill">Klasy: {", ".join(bundle['class_names'])}</div>
       </div>
     </div>
@@ -441,12 +441,12 @@ def build_interface(
 
         base_image = image.convert("RGB")
         global_result_html = format_pending_html(
-            "Analiza globalna jest gotowa do uzycia dla pelnych kadrow bez dominujacej twarzy.",
+            "Analiza globalna jest gotowa do użycia dla pełnych kadrów bez dominującej twarzy.",
             title="Wynik modelu globalnego",
         )
         original_preview = base_image
         face_result_html = format_pending_html(
-            "Model twarzowy nie jest zaladowany. Uruchom demo z checkpointem w models/faces_convnext_v2_adapt/best_model.pt.",
+            "Model twarzowy nie jest załadowany. Uruchom demo z checkpointem w models/faces_convnext_v2_adapt/best_model.pt.",
             title="Model twarzowy",
         )
         global_overlay_update = image_update(None, False)
@@ -470,18 +470,18 @@ def build_interface(
                 global_result_html = format_result_html(
                     global_result,
                     title="Wynik modelu globalnego",
-                    intro_text="Grad-CAM wskazuje, na ktorych obszarach calego obrazu model opieral decyzje.",
+                    intro_text="Grad-CAM wskazuje, na których obszarach całego obrazu model opierał decyzję.",
                 )
                 global_overlay_update = image_update(global_result["overlay_image"], True)
                 original_preview_update = image_update(global_result["input_image"], True)
                 face_result_html = format_pending_html(
-                    "Nie wykryto twarzy na tym obrazie, wiec analiza twarzowa nie zostala uruchomiona."
+                    "Nie wykryto twarzy na tym obrazie, więc analiza twarzowa nie została uruchomiona."
                     " Pokazano tylko wynik modelu globalnego.",
                     title="Model twarzowy",
                 )
             else:
                 global_result_html = format_pending_html(
-                    "Wykryto twarz, wiec wynik modelu globalnego zostal ukryty, aby nie mieszac go z bardziej trafna analiza twarzowa.",
+                    "Wykryto twarz, więc wynik modelu globalnego został ukryty, aby nie mieszać go z bardziej trafną analizą twarzową.",
                     title="Wynik modelu globalnego",
                 )
                 face_crop_update = image_update(face_image, True)
@@ -496,7 +496,7 @@ def build_interface(
                     intro_text="Ten wynik pochodzi z osobnego modelu wytrenowanego na cropach twarzy.",
                     extra_html=(
                         "<div style='margin-top:14px; color:#50657f;'>"
-                        f"Analiza dotyczy najwiekszej wykrytej twarzy na obrazie. Styl cropu: {face_crop_style}."
+                        f"Analiza dotyczy największej wykrytej twarzy na obrazie. Styl cropu: {face_crop_style}."
                         "</div>"
                     ),
                 )
@@ -511,7 +511,7 @@ def build_interface(
             global_result_html = format_result_html(
                 global_result,
                 title="Wynik modelu globalnego",
-                intro_text="Grad-CAM wskazuje, na ktorych obszarach calego obrazu model opieral decyzje.",
+                intro_text="Grad-CAM wskazuje, na których obszarach całego obrazu model opierał decyzję.",
             )
             global_overlay_update = image_update(global_result["overlay_image"], True)
             original_preview_update = image_update(global_result["input_image"], True)
@@ -577,7 +577,7 @@ def build_interface(
             build_gallery_update(summary, "correct"),
         )
 
-    with gr.Blocks(title="Detektor obrazow AI") as demo:
+    with gr.Blocks(title="Detektor obrazów AI") as demo:
         with gr.Column(elem_classes=["app-shell"]):
             gr.HTML(title_html)
             with gr.Tabs():
@@ -587,7 +587,7 @@ def build_interface(
                             with gr.Group(elem_classes=["panel-card"]):
                                 input_image = gr.Image(
                                     type="pil",
-                                    label="Obraz wejsciowy",
+                                    label="Obraz wejściowy",
                                     height=420,
                                     elem_classes=["upload-zone"],
                                 )
@@ -596,11 +596,11 @@ def build_interface(
                                     maximum=0.75,
                                     value=0.45,
                                     step=0.05,
-                                    label="Moc nakladki Grad-CAM",
+                                    label="Moc nakładki Grad-CAM",
                                 )
                                 analyze_button = gr.Button("Analizuj obraz", variant="primary")
                                 gr.Markdown(
-                                    "Model zwroci etykiete, pewnosc i mape ciepla wskazujaca obszary istotne dla decyzji.",
+                                    "Model zwróci etykietę, pewność i mapę ciepła wskazującą obszary istotne dla decyzji.",
                                     elem_classes=["footnote"],
                                 )
 
@@ -615,7 +615,7 @@ def build_interface(
                                     )
                                     original_image = gr.Image(
                                         type="pil",
-                                        label="Podglad obrazu / wykryta twarz",
+                                        label="Podgląd obrazu / wykryta twarz",
                                         height=300,
                                     )
                             with gr.Group(elem_classes=["panel-card"]):
@@ -645,7 +645,7 @@ def build_interface(
                         ],
                     )
 
-                with gr.Tab("Analiza bledow"):
+                with gr.Tab("Analiza błędów"):
                     with gr.Row(equal_height=True):
                         with gr.Column(scale=4):
                             with gr.Group(elem_classes=["panel-card"]):
@@ -667,22 +667,22 @@ def build_interface(
                                         "least_confident",
                                     ],
                                     value="hardest",
-                                    label="Sortowanie przypadkow",
+                                    label="Sortowanie przypadków",
                                 )
                                 examples_input = gr.Slider(
                                     minimum=1,
                                     maximum=30,
                                     value=12,
                                     step=1,
-                                    label="Przykladow na grupe",
+                                    label="Przykładów na grupę",
                                 )
                                 save_grad_cam_input = gr.Checkbox(
                                     value=True,
-                                    label="Zapisz Grad-CAM dla eksportowanych przykladow",
+                                    label="Zapisz Grad-CAM dla eksportowanych przykładów",
                                 )
                                 config_path_input = gr.Textbox(
                                     value=str(DEFAULT_CONFIG),
-                                    label="Sciezka config.yaml",
+                                    label="Ścieżka config.yaml",
                                 )
                                 output_dir_input = gr.Textbox(
                                     value="reports/error_analysis",
@@ -697,14 +697,14 @@ def build_interface(
                                     maximum=0.75,
                                     value=0.45,
                                     step=0.05,
-                                    label="Moc nakladki Grad-CAM",
+                                    label="Moc nakładki Grad-CAM",
                                 )
                                 analyze_errors_button = gr.Button(
-                                    "Uruchom analize bledow",
+                                    "Uruchom analizę błędów",
                                     variant="primary",
                                 )
                                 gr.Markdown(
-                                    "Filtr klasy pokazuje przypadki, gdzie dana klasa jest rzeczywista albo przewidziana. Tryb `hardest` promuje najbardziej mylace przypadki.",
+                                    "Filtr klasy pokazuje przypadki, gdzie dana klasa jest rzeczywista albo przewidziana. Tryb `hardest` promuje najbardziej mylące przypadki.",
                                     elem_classes=["footnote"],
                                 )
 
@@ -718,37 +718,37 @@ def build_interface(
 
                     with gr.Group(elem_classes=["panel-card"]):
                         false_positive_gallery = gr.Gallery(
-                            label="False positive",
+                            label="Fałszywie pozytywne",
                             visible=False,
                             columns=3,
                             height="auto",
                         )
                         false_negative_gallery = gr.Gallery(
-                            label="False negative",
+                            label="Fałszywie negatywne",
                             visible=False,
                             columns=3,
                             height="auto",
                         )
                         true_positive_gallery = gr.Gallery(
-                            label="True positive",
+                            label="Poprawnie pozytywne",
                             visible=False,
                             columns=3,
                             height="auto",
                         )
                         true_negative_gallery = gr.Gallery(
-                            label="True negative",
+                            label="Poprawnie negatywne",
                             visible=False,
                             columns=3,
                             height="auto",
                         )
                         errors_gallery = gr.Gallery(
-                            label="Errors",
+                            label="Błędy",
                             visible=False,
                             columns=3,
                             height="auto",
                         )
                         correct_gallery = gr.Gallery(
-                            label="Correct",
+                            label="Poprawne",
                             visible=False,
                             columns=3,
                             height="auto",
@@ -783,7 +783,7 @@ def build_interface(
                     )
 
             gr.Markdown(
-                "To narzedzie wspiera decyzje analityczne. Wysoka pewnosc modelu nie jest dowodem absolutnym.",
+                "To narzędzie wspiera decyzje analityczne. Wysoka pewność modelu nie jest dowodem absolutnym.",
                 elem_classes=["footnote"],
             )
 

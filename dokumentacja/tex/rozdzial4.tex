@@ -334,9 +334,81 @@ Interfejs ten ma charakter demonstracyjny i stanowi przydatne narzędzie do ręc
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{../reports/gradcam_smoke_test.jpg}
-\caption{Przykładowa wizualizacja Grad-CAM wygenerowana dla modelu globalnego}
-\label{fig:gradcam-smoke}
+\includegraphics[width=0.86\textwidth]{\detokenize{rys/ekranstartowy.png}}
+\caption{Ekran startowy lokalnego interfejsu demonstracyjnego}
+\label{fig:web-demo-start}
 \end{figure}
 
-Wizualizacja Grad-CAM z rysunku \ref{fig:gradcam-smoke} pełni funkcję diagnostyczną. Pozwala sprawdzić, czy model opiera decyzję na istotnych obszarach obrazu, czy raczej reaguje na przypadkowe tło, kompresję albo inne artefakty niezwiązane bezpośrednio z twarzą lub głównym obiektem.
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/real dobra klasyfikacja.png}}
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/fake dobra klasyfikacja.png}}
+\end{minipage}
+\caption{Przykłady poprawnej klasyfikacji obrazu prawdziwego oraz obrazu wygenerowanego przez AI}
+\label{fig:web-demo-real-fake}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/twarz real dobra klasfyfikacja.png}}
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/twarz fake dobra klasyfikacja.png}}
+\end{minipage}
+\caption{Przykłady poprawnej klasyfikacji w etapie twarzowym}
+\label{fig:web-demo-face-correct}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{\detokenize{rys/twarz fake klasyfikacja real.png}}
+\caption{Przykład trudnego przypadku: obraz syntetyczny sklasyfikowany przez model twarzowy jako \texttt{real}}
+\label{fig:web-demo-face-error}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/gradcam real dobra klasyfikacja.png}}
+\end{minipage}
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/gradcam fake dobra klasyfikacja.png}}
+\end{minipage}
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/gradcam fake oznaczone jako real twarz.png}}
+\end{minipage}
+\caption{Przykładowe wizualizacje Grad-CAM dla poprawnych i błędnych predykcji}
+\label{fig:web-demo-gradcam}
+\end{figure}
+
+Wizualizacje Grad-CAM z rysunku \ref{fig:web-demo-gradcam} pełnią funkcję diagnostyczną. Pozwalają sprawdzić, czy model opiera decyzję na istotnych obszarach obrazu, czy raczej reaguje na przypadkowe tło, kompresję albo inne artefakty niezwiązane bezpośrednio z twarzą lub głównym obiektem.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/ostrzezenie niska rozdzielczosc.png}}
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{\detokenize{rys/konsola.png}}
+\end{minipage}
+\caption{Ostrzeżenie o niskiej jakości obrazu oraz potwierdzenie uruchomienia aplikacji w konsoli}
+\label{fig:web-demo-quality-console}
+\end{figure}
