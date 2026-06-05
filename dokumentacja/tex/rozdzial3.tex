@@ -20,6 +20,33 @@ Projekt został podzielony na kilka logicznych modułów, z których każdy odpo
 
 Takie rozdzielenie upraszcza dalszy rozwój projektu, ponieważ etap globalny i etap twarzowy mogą być rozwijane niezależnie.
 
+\subsection{Schemat przepływu danych}
+
+Na potrzeby projektu przygotowano dwa uzupełniające się tory analizy: globalny, działający na całym obrazie, oraz twarzowy, uruchamiany dla portretów po wykryciu twarzy. Uproszczony przepływ danych przedstawiono w tabeli \ref{tab:pipeline}.
+
+\begin{table}[H]
+\centering
+\caption{Uproszczony schemat działania systemu}
+\label{tab:pipeline}
+\begin{tabular}{|p{3.2cm}|p{9.2cm}|}
+\hline
+\textbf{Etap} & \textbf{Opis działania} \\
+\hline
+Obraz wejściowy & Użytkownik przekazuje pojedynczy obraz do skryptu inferencji albo interfejsu demonstracyjnego. \\
+\hline
+Preprocessing & Obraz jest wczytywany, przeskalowywany do rozmiaru \texttt{224 x 224} i normalizowany zgodnie z wymaganiami modelu. \\
+\hline
+Model globalny & Klasyfikator analizuje cały kadr i zwraca predykcję \texttt{real/fake} wraz z poziomem pewności. \\
+\hline
+Detekcja twarzy & Dla portretów wykonywane jest wykrycie twarzy oraz przygotowanie cropu w stylu \texttt{face} albo \texttt{portrait}. \\
+\hline
+Model twarzowy & Osobny klasyfikator ocenia wycięty obszar twarzy i pozwala porównać wynik z modelem globalnym. \\
+\hline
+Interpretacja & Dla wybranych próbek generowana jest mapa Grad-CAM, która pokazuje obszary istotne dla decyzji modelu. \\
+\hline
+\end{tabular}
+\end{table}
+
 \subsection{Dane}
 
 W eksperymentach wykorzystano zbiór danych zorganizowany w klasy \texttt{real} i \texttt{fake}, a następnie podzielony na części:
@@ -101,3 +128,28 @@ Trening został zoptymalizowany pod GPU poprzez:
 \end{itemize}
 
 Te decyzje projektowe pozwoliły wyraźnie poprawić praktyczne wykorzystanie karty graficznej podczas treningu.
+
+\subsection{Konfiguracje eksperymentów}
+
+W trakcie pracy uruchomiono kilka wariantów eksperymentalnych. Ich zestawienie znajduje się w tabeli \ref{tab:konfiguracje-eksperymentow}. Tabela porządkuje, które modele były oceniane na danych wewnętrznych, a które służyły do sprawdzenia generalizacji na nowszych generatorach.
+
+\begin{table}[H]
+\centering
+\caption{Najważniejsze konfiguracje eksperymentów}
+\label{tab:konfiguracje-eksperymentow}
+\begin{tabular}{|p{3.6cm}|p{3.2cm}|p{3.2cm}|p{3.3cm}|}
+\hline
+\textbf{Wariant} & \textbf{Model} & \textbf{Dane} & \textbf{Cel} \\
+\hline
+Baseline globalny & \texttt{ResNet18} & Główny zbiór \texttt{real/fake} & Uzyskanie punktu odniesienia dla klasyfikacji całych obrazów. \\
+\hline
+Globalny robust & \texttt{ResNet18} & Główny zbiór z augmentacjami jakości & Sprawdzenie odporności na kompresję, rozmycie i skalowanie. \\
+\hline
+Model twarzowy & \texttt{ConvNeXt Tiny} & Curated portrety i cropy twarzy & Ocena, czy analiza twarzy poprawia klasyfikację portretów. \\
+\hline
+Benchmark OOD & Modele globalne i twarzowe & GPT, Gemini / Nano2 oraz dobrane zdjęcia prawdziwe & Sprawdzenie generalizacji poza głównym rozkładem treningowym. \\
+\hline
+Adaptacja twarzowa & \texttt{ConvNeXt Tiny} & Mały zbiór cropów z nowych obrazów & Wstępne dostrojenie modelu do nowych generatorów. \\
+\hline
+\end{tabular}
+\end{table}

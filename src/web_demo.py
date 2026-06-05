@@ -13,7 +13,7 @@ from .face_utils import build_face_detector, detect_faces, extract_face_crops, r
 from .inference import load_model_bundle, predict_with_grad_cam
 
 DEFAULT_CHECKPOINT = Path("models/best_model.pt")
-DEFAULT_FACE_CHECKPOINT = Path("models/faces_convnext/best_model.pt")
+DEFAULT_FACE_CHECKPOINT = Path("models/faces_convnext_v2_adapt/best_model.pt")
 DEFAULT_CONFIG = Path("config.yaml")
 
 CUSTOM_CSS = """
@@ -446,7 +446,7 @@ def build_interface(
         )
         original_preview = base_image
         face_result_html = format_pending_html(
-            "Model twarzowy nie jest zaladowany. Uruchom demo z checkpointem w models/faces_convnext/best_model.pt.",
+            "Model twarzowy nie jest zaladowany. Uruchom demo z checkpointem w models/faces_convnext_v2_adapt/best_model.pt.",
             title="Model twarzowy",
         )
         global_overlay_update = image_update(None, False)

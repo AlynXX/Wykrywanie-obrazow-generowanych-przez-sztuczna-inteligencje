@@ -226,7 +226,8 @@ python -m src.train --config config_faces.yaml
 ```
 
 Aktualna konfiguracja twarzowa korzysta z `convnext_tiny`.
-Checkpointy i podsumowanie treningu zapisza sie domyslnie do `models/faces_convnext/`.
+Checkpointy i podsumowanie treningu dla starszej konfiguracji zapisza sie domyslnie do `models/faces_convnext/`.
+W aktualnych eksperymentach uzywany jest jednak nowszy wariant `ConvNeXt v2`, ktorego checkpoint znajduje sie w `models/faces_convnext_v2/`.
 
 3a. Zlozenie curated datasetu `ConvNeXt v2` z duzego, roznorodnego zbioru:
 
@@ -261,14 +262,14 @@ Checkpointy zapisza sie do `models/faces_convnext_v2/`.
 4. Porownanie modelu globalnego i twarzowego na portretach:
 
 ```bash
-python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext/best_model.pt --data-dir data/deepfake_faces --split test
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2/best_model.pt --data-dir data/deepfake_faces --split test
 ```
 
 Raport porownawczy zapisze sie domyslnie do `reports/face_model_comparison.json`, a pelny CSV obok niego.
 Do eksperymentu z szerszym cropem portretowym mozna uzyc:
 
 ```bash
-python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext/best_model.pt --data-dir data/deepfake_faces --split test --crop-style portrait
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2/best_model.pt --data-dir data/deepfake_faces --split test --crop-style portrait
 ```
 
 5. Przygotowanie malego datasetu adaptacyjnego `hard fakes + old real`:
@@ -286,7 +287,7 @@ Wszystkie przypisania zapisze tez do `adaptation_manifest.json`.
 6. Fine-tuning modelu twarzowego na `hard fakes`:
 
 ```bash
-python -m src.train --config config_hard_fakes.yaml --init-checkpoint models/faces_convnext/best_model.pt
+python -m src.train --config config_hard_fakes.yaml --init-checkpoint models/faces_convnext_v2/best_model.pt
 ```
 
 Ta komenda startuje od wag najlepszego modelu twarzowego, ale nie przenosi historii, optimizera ani starego `best_val_score`, wiec nadaje sie do czystego eksperymentu adaptacyjnego.
@@ -294,7 +295,7 @@ Ta komenda startuje od wag najlepszego modelu twarzowego, ale nie przenosi histo
 7. Strojenie progu decyzyjnego dla modelu adaptacyjnego:
 
 ```bash
-python -m src.tune_threshold --checkpoint models/faces_convnext_hard_adapt/best_model.pt --config config_hard_fakes.yaml --tune-split val --eval-split test --metric f1_positive
+python -m src.tune_threshold --checkpoint models/faces_convnext_v2_adapt/best_model.pt --config config_face_adaptation.yaml --tune-split val --eval-split test --metric f1_positive
 ```
 
 Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy prog dla klasy `fake`.
@@ -302,11 +303,11 @@ Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy prog dla k
 8. Uzycie progu w predykcji lub GUI:
 
 ```bash
-python -m src.predict --checkpoint models/faces_convnext_hard_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
+python -m src.predict --checkpoint models/faces_convnext_v2_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
 ```
 
 ```bash
-python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --face-threshold 0.62
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt --face-threshold 0.62
 ```
 
 9. Przygotowanie zewnetrznego benchmarku Gemini:
@@ -324,7 +325,7 @@ python -m src.error_analysis --checkpoint models/best_model.pt --config config_g
 ```
 
 ```bash
-python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --data-dir data/gemini_benchmark --split test --crop-style portrait --output-path reports/gemini_face_vs_global.json
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt --data-dir data/gemini_benchmark --split test --crop-style portrait --output-path reports/gemini_face_vs_global.json
 ```
 
 ## Pilotowy Benchmark OOD
@@ -395,7 +396,7 @@ python -m src.error_analysis --checkpoint models/best_model.pt --config config_g
 7. Porownanie modelu globalnego i twarzowego:
 
 ```bash
-python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --data-dir data/ood_pilot_benchmark --split test --crop-style portrait --output-path reports/ood_pilot_face_vs_global.json
+python -m src.compare_face_models --global-checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt --data-dir data/ood_pilot_benchmark --split test --crop-style portrait --output-path reports/ood_pilot_face_vs_global.json
 ```
 
 ## Opcja A: Adaptacja Modelu Globalnego
@@ -589,13 +590,13 @@ python -m src.web_demo --checkpoint models/best_model.pt
 Jesli dostepny jest tez model twarzowy, demo moze pokazac oba etapy projektu naraz:
 
 ```bash
-python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext/best_model.pt
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt
 ```
 
 Mozesz tez przetestowac szerszy crop portretowy:
 
 ```bash
-python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --face-threshold 0.62 --face-crop-style portrait
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt --face-threshold 0.62 --face-crop-style portrait
 ```
 
 Po uruchomieniu aplikacja bedzie dostepna lokalnie w przegladarce, domyslnie pod adresem `http://127.0.0.1:7860`.

@@ -24,6 +24,25 @@ W trakcie pracy dodano także mechanizmy praktyczne, które okazały się istotn
     \item lepsze ustawienia loadera pod Windows i CUDA.
 \end{itemize}
 
+\subsection{Sposób uczenia modeli}
+
+Uczenie modeli miało charakter nadzorowany. Każdy obraz w zbiorze danych posiadał etykietę klasy \texttt{real} albo \texttt{fake}, a zadaniem sieci było nauczenie się rozróżniania tych dwóch kategorii na podstawie cech wizualnych obrazu. Dane zostały podzielone na zbiory \texttt{train}, \texttt{val} oraz \texttt{test}, dzięki czemu proces uczenia, strojenia i końcowej oceny był rozdzielony.
+
+Podczas treningu wykorzystywano obrazy przeskalowane do rozmiaru \texttt{224 x 224}. Model bazowy uczył się na całych obrazach, natomiast model twarzowy na cropach twarzy przygotowanych po detekcji twarzy. W obu przypadkach celem było zminimalizowanie błędu klasyfikacji binarnej oraz uzyskanie możliwie dobrych metryk na zbiorze walidacyjnym.
+
+Proces uczenia obejmował:
+
+\begin{itemize}
+    \item wykorzystanie wag wstępnie wytrenowanych, aby przyspieszyć uczenie i poprawić stabilność modelu,
+    \item trening na zbiorze \texttt{train} oraz kontrolę jakości na zbiorze \texttt{val},
+    \item zapis najlepszego checkpointu na podstawie wyniku walidacyjnego,
+    \item użycie \texttt{early stopping}, aby ograniczyć ryzyko przeuczenia,
+    \item zastosowanie augmentacji jakościowych, takich jak kompresja JPEG, rozmycie, szum oraz operacje downscale-upscale,
+    \item końcową ewaluację na zbiorze \texttt{test} oraz na dodatkowym benchmarku OOD.
+\end{itemize}
+
+W praktyce uczenie nie polegało więc wyłącznie na maksymalizacji wyniku na danych wewnętrznych. Ważnym elementem było sprawdzenie, czy model zachowuje się stabilnie także po pogorszeniu jakości obrazu oraz na nowych obrazach wygenerowanych przez inne narzędzia niż te obecne w głównym zbiorze danych.
+
 \subsection{Metryki}
 
 Podczas ewaluacji modelu raportowane są:
@@ -37,6 +56,31 @@ Podczas ewaluacji modelu raportowane są:
 \end{itemize}
 
 Metryki te pozwalają ocenić model nie tylko pod względem skuteczności ogólnej, ale też pod kątem jakości rozróżniania klas.
+
+\subsection{Zakres testów i porównań}
+
+Weryfikacja projektu obejmowała kilka poziomów testów. Pierwszym z nich była klasyczna ewaluacja na zbiorze testowym, która pozwalała sprawdzić dokładność modelu na danych podobnych do treningowych. Drugim poziomem był test odporności, w którym ten sam zbiór testowy poddano degradacjom jakości. Trzecim poziomem był benchmark OOD, czyli sprawdzenie modeli na nowych generatorach i nowych portretach spoza głównego rozkładu treningowego.
+
+\begin{table}[H]
+\centering
+\caption{Zakres wykonanych testów i porównań}
+\label{tab:zakres-testow}
+\begin{tabular}{|p{3.5cm}|p{5.1cm}|p{5.0cm}|}
+\hline
+\textbf{Rodzaj testu} & \textbf{Co sprawdzano} & \textbf{Najważniejszy wniosek} \\
+\hline
+Test bazowy & Dokładność modelu globalnego na zbiorze testowym \texttt{real/fake}. & Model globalny uzyskał wysoką skuteczność na danych zbliżonych do treningowych. \\
+\hline
+Test robust & Wpływ kompresji, rozmycia i skalowania na wyniki. & Najbardziej problematyczna była bardzo silna kompresja JPEG. \\
+\hline
+Test modelu twarzowego & Skuteczność klasyfikatora działającego na cropach twarzy. & Model twarzowy osiągnął bardzo dobre wyniki na danych wewnętrznych. \\
+\hline
+Benchmark OOD & Zachowanie modeli na nowych generatorach GPT / Gemini oraz nowych prawdziwych portretach. & Wyniki spadły, a największym problemem były fałszywe alarmy dla prawdziwych portretów. \\
+\hline
+Porównanie globalny--twarzowy & Różnice między analizą całego obrazu i analizą twarzy. & Model twarzowy po adaptacji poprawił wyniki OOD, ale nie rozwiązał problemu całkowicie. \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Wyniki etapu bazowego}
 
@@ -104,6 +148,35 @@ Najważniejsze obserwacje były następujące:
 
 Pokazuje to, że model jest już w pewnym stopniu odporny na pogorszenie jakości, ale nadal pozostaje wrażliwy na obrazy bardzo mocno skompresowane.
 
+\begin{table}[H]
+\centering
+\caption{Wpływ degradacji jakości obrazu na wyniki modelu globalnego}
+\label{tab:robustness}
+\begin{tabular}{|p{3.5cm}|c|c|c|}
+\hline
+\textbf{Profil testowy} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{ROC-AUC} \\
+\hline
+\texttt{clean} & 0.9268 & 0.9267 & 0.9804 \\
+\hline
+\texttt{jpeg\_low} & 0.9037 & 0.9036 & 0.9689 \\
+\hline
+\texttt{jpeg\_extreme} & 0.8657 & 0.8651 & 0.9510 \\
+\hline
+\texttt{blur\_light} & 0.9230 & 0.9230 & 0.9772 \\
+\hline
+\texttt{blur\_strong} & 0.9022 & 0.9022 & 0.9646 \\
+\hline
+\texttt{downscale\_light} & 0.9212 & 0.9212 & 0.9763 \\
+\hline
+\texttt{downscale\_strong} & 0.9047 & 0.9047 & 0.9673 \\
+\hline
+\texttt{mixed\_quality} & 0.8825 & 0.8825 & 0.9527 \\
+\hline
+\end{tabular}
+\end{table}
+
+Tabela \ref{tab:robustness} pokazuje, że największy spadek skuteczności wystąpił dla profilu \texttt{jpeg\_extreme}. W praktyce oznacza to, że bardzo silna kompresja może usuwać lub zniekształcać cechy, na których model opiera klasyfikację.
+
 \subsection{Benchmark OOD dla nowych generatorów}
 
 Aby sprawdzić, czy modele generalizują poza główny rozkład treningowy, przygotowano mały benchmark OOD złożony z:
@@ -135,6 +208,40 @@ Macierz pomyłek pokazała istotną asymetrię:
 \end{itemize}
 
 Wniosek z tego etapu jest ważny: model globalny nie zawodził głównie na nowych obrazach syntetycznych, lecz na nowych realistycznych portretach, dla których generował zbyt wiele fałszywych alarmów.
+
+\begin{table}[H]
+\centering
+\caption{Macierz pomyłek modelu globalnego na benchmarku OOD}
+\label{tab:confusion-global-ood}
+\begin{tabular}{|p{3.5cm}|c|c|}
+\hline
+ & \textbf{Predykcja fake} & \textbf{Predykcja real} \\
+\hline
+\textbf{Klasa fake} & 39 & 1 \\
+\hline
+\textbf{Klasa real} & 22 & 18 \\
+\hline
+\end{tabular}
+\end{table}
+
+Macierz w tabeli \ref{tab:confusion-global-ood} potwierdza, że model globalny był bardzo czuły na obrazy syntetyczne, ale równocześnie zbyt często oznaczał prawdziwe portrety jako \texttt{fake}. Z punktu widzenia użytkownika taki błąd jest istotny, ponieważ prowadzi do fałszywego oskarżenia prawdziwego zdjęcia o sztuczne pochodzenie.
+
+\begin{table}[H]
+\centering
+\caption{Porównanie modelu globalnego i twarzowego na podzbiorze OOD z wykrytą twarzą}
+\label{tab:face-global-ood}
+\begin{tabular}{|p{4.2cm}|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{ROC-AUC} \\
+\hline
+Globalny na wykrytych twarzach & 0.7143 & 0.6913 & 0.8360 \\
+\hline
+Twarzowy po adaptacji & 0.7922 & 0.7919 & 0.8738 \\
+\hline
+\end{tabular}
+\end{table}
+
+Dla 77 obrazów, na których wykryto twarz, model twarzowy po adaptacji uzyskał lepsze metryki niż model globalny. Nie oznacza to jednak pełnego rozwiązania problemu, ponieważ oba modele zgadzały się tylko dla około 61\% sparowanych próbek, a model twarzowy nadal popełniał błędy na części obrazów syntetycznych.
 
 \subsection{Tabela zbiorcza wyników}
 
@@ -224,3 +331,12 @@ W celu zwiększenia użyteczności projektu przygotowano lokalne demo webowe w \
 \end{itemize}
 
 Interfejs ten ma charakter demonstracyjny i stanowi przydatne narzędzie do ręcznej analizy zachowania modelu.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{../reports/gradcam_smoke_test.jpg}
+\caption{Przykładowa wizualizacja Grad-CAM wygenerowana dla modelu globalnego}
+\label{fig:gradcam-smoke}
+\end{figure}
+
+Wizualizacja Grad-CAM z rysunku \ref{fig:gradcam-smoke} pełni funkcję diagnostyczną. Pozwala sprawdzić, czy model opiera decyzję na istotnych obszarach obrazu, czy raczej reaguje na przypadkowe tło, kompresję albo inne artefakty niezwiązane bezpośrednio z twarzą lub głównym obiektem.

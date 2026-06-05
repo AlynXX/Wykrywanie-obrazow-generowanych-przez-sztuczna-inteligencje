@@ -15,6 +15,33 @@ Do najważniejszych osiągnięć należy zaliczyć:
     \item przygotowanie benchmarku OOD dla nowszych generatorów i przeprowadzenie analizy błędów.
 \end{itemize}
 
+\subsection{Co udało się osiągnąć}
+
+Najważniejszym rezultatem projektu jest działający system, który obejmuje cały proces: przygotowanie danych, trening modeli, ewaluację, analizę odporności, interpretowalność oraz lokalny interfejs demonstracyjny. Model globalny osiągnął wysoką dokładność na głównym zbiorze testowym, a model twarzowy uzyskał bardzo dobre wyniki na danych portretowych zbliżonych do treningowych.
+
+Udało się również pokazać, że sama dokładność na klasycznym zbiorze testowym nie jest wystarczająca do pełnej oceny systemu. Dlatego w projekcie wykonano dodatkowe testy odporności oraz benchmark OOD. Dzięki temu dokumentacja pokazuje nie tylko najlepsze wyniki, ale też ograniczenia modelu w trudniejszych warunkach.
+
+\begin{table}[H]
+\centering
+\caption{Podsumowanie osiągniętych i nieosiągniętych celów}
+\label{tab:cele-projektu}
+\begin{tabular}{|p{4.2cm}|p{5.0cm}|p{4.2cm}|}
+\hline
+\textbf{Obszar} & \textbf{Co udało się osiągnąć} & \textbf{Co pozostało ograniczeniem} \\
+\hline
+Model globalny & Wysoka skuteczność na głównym zbiorze testowym: Accuracy 0.9339 dla baseline oraz 0.9268 dla wariantu robust. & Spadek skuteczności na benchmarku OOD do Accuracy 0.7125. \\
+\hline
+Odporność na jakość obrazu & Model zachował dobrą jakość dla lekkiego rozmycia i lekkiego downscale. & Silna kompresja JPEG oraz profil \texttt{mixed\_quality} wyraźnie obniżały wyniki. \\
+\hline
+Model twarzowy & Bardzo dobry wynik na danych wewnętrznych: Accuracy 0.9763. & Słaba generalizacja pierwotnych checkpointów twarzowych na nowe generatory. \\
+\hline
+Adaptacja twarzowa & Poprawa po fine-tuningu na nowych cropach: Accuracy 0.8548 na teście adaptacyjnym. & Zbiór adaptacyjny był mały, więc wynik nie gwarantuje pełnej stabilności na dowolnych danych. \\
+\hline
+Interfejs demonstracyjny & Możliwość ręcznego testowania obrazów, porównania modeli i generowania Grad-CAM. & Interfejs ma charakter lokalnego demo, a nie gotowego systemu produkcyjnego. \\
+\hline
+\end{tabular}
+\end{table}
+
 Jednocześnie analiza praktyczna pokazała, że nawet bardzo dobry wynik ilościowy na danych zbliżonych do treningowych nie oznacza pełnej gotowości modelu do pracy na dowolnych danych. Szczególnie problematyczne okazały się:
 
 \begin{itemize}
@@ -23,6 +50,16 @@ Jednocześnie analiza praktyczna pokazała, że nawet bardzo dobry wynik ilości
     \item najnowsze fotorealistyczne generatory obrazów,
     \item małe zbiory adaptacyjne, które nie pozwalają jeszcze na pełną stabilizację modelu.
 \end{itemize}
+
+\subsection{Co było problematyczne i dlaczego}
+
+Największym problemem okazała się generalizacja, czyli przeniesienie skuteczności z danych wewnętrznych na nowe obrazy spoza głównego zbioru treningowego. Przyczyną był przede wszystkim inny rozkład danych: nowe portrety i obrazy wygenerowane przez GPT / Gemini miały inną estetykę, inne artefakty oraz często wyższą jakość wizualną niż część danych treningowych.
+
+Drugim problemem były fałszywe alarmy dla prawdziwych portretów. Model globalny bardzo dobrze wykrywał większość obrazów syntetycznych w benchmarku OOD, ale jednocześnie oznaczał wiele prawdziwych zdjęć jako \texttt{fake}. Możliwą przyczyną jest to, że model nauczył się traktować czyste, studyjne albo bardzo estetyczne portrety jako podejrzane, ponieważ podobne cechy często występują również w obrazach generowanych przez AI.
+
+Trzecim problemem była wrażliwość na silne pogorszenie jakości obrazu. Kompresja JPEG, rozmycie i skalowanie mogą usuwać drobne artefakty, na których model opiera decyzję. W efekcie obraz po przetworzeniu przez komunikator albo serwis społecznościowy może być trudniejszy do klasyfikacji niż oryginalna próbka.
+
+Osobnym ograniczeniem był model twarzowy. Analiza samej twarzy była przydatna, ale nie wystarczyła do pełnego rozwiązania problemu. Przyczyną jest to, że crop twarzy usuwa część kontekstu obrazu, a jednocześnie wymaga poprawnej detekcji twarzy. Dodatkowo mały zbiór adaptacyjny nie dawał wystarczająco dużo przykładów, aby model stabilnie nauczył się wszystkich wariantów nowych generatorów.
 
 Najważniejszy wniosek metodologiczny jest następujący: model globalny stanowi mocny baseline dla fotografii i znanych danych, natomiast generalizacja na najnowsze generatory GPT / Gemini pozostaje ograniczona. W benchmarku OOD problem nie polegał wyłącznie na niewykrywaniu obrazów syntetycznych, ale również na generowaniu zbyt wielu fałszywych alarmów dla nowych prawdziwych portretów.
 
