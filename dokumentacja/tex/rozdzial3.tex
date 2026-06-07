@@ -6,20 +6,21 @@
 Projekt został podzielony na kilka logicznych modułów, z których każdy odpowiada za inny fragment eksperymentu:
 
 \begin{itemize}
-    \item \texttt{dataset.py} --- przygotowanie danych, transformacje i augmentacje,
-    \item \texttt{split\_dataset.py} --- przygotowanie struktury \texttt{train/val/test},
-    \item \texttt{model.py} --- tworzenie modelu na bazie biblioteki \texttt{timm},
-    \item \texttt{train.py} --- trening, checkpointy, metryki i early stopping,
-    \item \texttt{predict.py} oraz \texttt{inference.py} --- inferencja dla pojedynczego obrazu,
-    \item \texttt{robustness\_eval.py} --- test odporności na spadek jakości,
-    \item \texttt{deepfake\_faces.py} oraz \texttt{face\_utils.py} --- wykrywanie twarzy i przygotowanie cropów,
-    \item \texttt{compare\_face\_models.py} --- porównanie modelu globalnego i twarzowego,
-    \item \texttt{error\_analysis.py} --- analiza błędów i eksport przykładów,
-    \item \texttt{web\_demo.py} --- lokalny interfejs demonstracyjny.
+    \item \texttt{dataset.py} - przygotowanie danych, transformacje i augmentacje,
+    \item \texttt{split\_dataset.py} - przygotowanie struktury \texttt{train/val/test},
+    \item \texttt{model.py} - tworzenie modelu na bazie biblioteki \texttt{timm},
+    \item \texttt{train.py} - trening, checkpointy, metryki i early stopping,
+    \item \texttt{predict.py} oraz \texttt{inference.py} - inferencja dla pojedynczego obrazu,
+    \item \texttt{robustness\_eval.py} - test odporności na spadek jakości,
+    \item \texttt{deepfake\_faces.py} oraz \texttt{face\_utils.py} - wykrywanie twarzy i przygotowanie cropów,
+    \item \texttt{compare\_face\_models.py} - porównanie modelu globalnego i twarzowego,
+    \item \texttt{error\_analysis.py} - analiza błędów i eksport przykładów,
+    \item \texttt{web\_demo.py} - lokalny interfejs demonstracyjny.
 \end{itemize}
 
 Takie rozdzielenie upraszcza dalszy rozwój projektu, ponieważ etap globalny i etap twarzowy mogą być rozwijane niezależnie.
 
+\newpage
 \subsection{Schemat przepływu danych}
 
 Na potrzeby projektu przygotowano dwa uzupełniające się tory analizy: globalny, działający na całym obrazie, oraz twarzowy, uruchamiany dla portretów po wykryciu twarzy. Uproszczony przepływ danych przedstawiono w tabeli \ref{tab:pipeline}.
@@ -28,7 +29,7 @@ Na potrzeby projektu przygotowano dwa uzupełniające się tory analizy: globaln
 \centering
 \caption{Uproszczony schemat działania systemu}
 \label{tab:pipeline}
-\begin{tabular}{|p{3.2cm}|p{9.2cm}|}
+\begin{tabular}{|L{3.2cm}|L{9.2cm}|}
 \hline
 \textbf{Etap} & \textbf{Opis działania} \\
 \hline
@@ -58,11 +59,11 @@ W eksperymentach wykorzystano zbiór danych zorganizowany w klasy \texttt{real} 
 \end{itemize}
 
 Taki podział pozwala oddzielić proces uczenia od strojenia i od finalnej oceny modelu.
-
+\newpage
 W dalszym etapie przygotowano również:
 
 \begin{itemize}
-    \item curated zbiór portretów do treningu modelu twarzowego,
+    \item wyselekcjonowany zbiór portretów do treningu modelu twarzowego,
     \item mały benchmark OOD z nowymi generatorami GPT i Gemini / Nano2,
     \item małe zbiory adaptacyjne do prób dostrajania modeli.
 \end{itemize}
@@ -137,7 +138,7 @@ W trakcie pracy uruchomiono kilka wariantów eksperymentalnych. Ich zestawienie 
 \centering
 \caption{Najważniejsze konfiguracje eksperymentów}
 \label{tab:konfiguracje-eksperymentow}
-\begin{tabular}{|p{3.6cm}|p{3.2cm}|p{3.2cm}|p{3.3cm}|}
+\begin{tabular}{|L{3.3cm}|L{2.9cm}|L{2.9cm}|L{3.1cm}|}
 \hline
 \textbf{Wariant} & \textbf{Model} & \textbf{Dane} & \textbf{Cel} \\
 \hline
@@ -145,7 +146,7 @@ Baseline globalny & \texttt{ResNet18} & Główny zbiór \texttt{real/fake} & Uzy
 \hline
 Globalny robust & \texttt{ResNet18} & Główny zbiór z augmentacjami jakości & Sprawdzenie odporności na kompresję, rozmycie i skalowanie. \\
 \hline
-Model twarzowy & \texttt{ConvNeXt Tiny} & Curated portrety i cropy twarzy & Ocena, czy analiza twarzy poprawia klasyfikację portretów. \\
+Model twarzowy & \texttt{ConvNeXt Tiny} & Wybrane portrety i cropy twarzy & Ocena, czy analiza twarzy poprawia klasyfikację portretów. \\
 \hline
 Benchmark OOD & Modele globalne i twarzowe & GPT, Gemini / Nano2 oraz dobrane zdjęcia prawdziwe & Sprawdzenie generalizacji poza głównym rozkładem treningowym. \\
 \hline

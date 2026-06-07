@@ -30,7 +30,6 @@ sorting=none
 \usepackage{hypernat}                       %Potrzebna pakietowi natbib do wspolpracy z pakietem hyperref (wazna kolejnosc: 1. hyperref, 2. natbib, 3. hypernat).
 
 %grafika i geometria strony
-\usepackage{extsizes}           %Dostepne inne rozmiary czcionek, np. 14 w poleceniu: \documentclass[14pt]{article}.
 \usepackage[final]{graphicx}
 \usepackage[a4paper,left=3.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
 
@@ -45,6 +44,7 @@ sorting=none
 \usepackage{expdlist}    %Zmienia definicję środowiska description, daje większe możliwości wpływu na wygląd listy.
 \usepackage{flafter}     %Wprowadza parametr [tb] do polecenia \suppressfloats[t] (polecenie to powoduje nie umieszczanie rysunkow, tabel itp. na stronach, na ktorych jest to polecenie (np. moze byc to stroma z tytulem rozdzialu, ktory chcemy zeby byl u samej gory, a nie np. pod rysunkiem)).
 \usepackage{array}       %Ładniej drukuje tabelki (np. daje wiecej miejsca w komorkach -- nie są tak ścieśnione, jak bez tego pakietu).
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{listings}    %Listingi programow.
 \usepackage[format=hang,labelsep=period,labelfont={bf,small},textfont=small]{caption}   %Formatuje podpisy pod rysunkami i tabelami. Parametr 'hang' powoduje wcięcie kolejnych linii podpisu na szerokosc nazwy podpisu, np. 'Rysunek 1.'.
 \usepackage{appendix}    %Troszczy się o załączniki.
@@ -53,7 +53,6 @@ sorting=none
 \usepackage{makeidx}     %Troszczy się o indeks (skorowidz).
 
 %nieużywane, ale potencjalnie przydatne
-\usepackage{sectsty}           %Formatuje nagłówki, np. żeby były kolorowe -- polecenie: \allsectionsfont{\color{Blue}}.
 %\usepackage{version}           %Wersje dokumentu.
 
 %============

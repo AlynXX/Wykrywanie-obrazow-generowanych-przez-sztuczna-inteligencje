@@ -1,4 +1,4 @@
-\documentclass[12pt,twoside,a4paper,openany]{article}
+\documentclass[12pt,twoside,a4paper]{article}
 
     \input{preambula_pakiety.tex}
     \input{preambula_ustawienia.tex}
@@ -20,6 +20,7 @@
 \usepackage{fancyhdr}
 
 \begin{document}
+    \raggedbottom
     \setlength{\headheight}{23pt}
 
     \renewcommand{\figurename}{Rys.}
@@ -80,6 +81,4 @@
     \addcontentsline{toc}{section}{Spis listingów}\lstlistoflistings
     \thispagestyle{fancy}
 
-    % lista rzeczy do zrobienia: wypisuje na końcu dokumentu, patrz pakiet todo.sty
-    \todos
 \end{document}

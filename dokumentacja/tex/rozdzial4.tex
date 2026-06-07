@@ -18,17 +18,18 @@ W trakcie pracy dodano także mechanizmy praktyczne, które okazały się istotn
 
 \begin{itemize}
     \item \texttt{early stopping},
-    \item checkpointy \texttt{best\_model.pt}, \texttt{last\_checkpoint.pt} i \texttt{interrupted\_checkpoint.pt},
+    \item checkpointy: \texttt{best\_model.pt}, \texttt{last\_checkpoint.pt} oraz checkpoint przerwanego treningu,
     \item obsługę treningu na GPU z wykorzystaniem \texttt{AMP},
     \item automatyczny dobór rozmiaru batcha,
     \item lepsze ustawienia loadera pod Windows i CUDA.
 \end{itemize}
 
+\newpage
 \subsection{Sposób uczenia modeli}
 
 Uczenie modeli miało charakter nadzorowany. Każdy obraz w zbiorze danych posiadał etykietę klasy \texttt{real} albo \texttt{fake}, a zadaniem sieci było nauczenie się rozróżniania tych dwóch kategorii na podstawie cech wizualnych obrazu. Dane zostały podzielone na zbiory \texttt{train}, \texttt{val} oraz \texttt{test}, dzięki czemu proces uczenia, strojenia i końcowej oceny był rozdzielony.
 
-Podczas treningu wykorzystywano obrazy przeskalowane do rozmiaru \texttt{224 x 224}. Model bazowy uczył się na całych obrazach, natomiast model twarzowy na cropach twarzy przygotowanych po detekcji twarzy. W obu przypadkach celem było zminimalizowanie błędu klasyfikacji binarnej oraz uzyskanie możliwie dobrych metryk na zbiorze walidacyjnym.
+Podczas treningu wykorzystywano obrazy przeskalowane do rozmiaru 224 x 224 piksele. Model bazowy uczył się na całych obrazach, natomiast model twarzowy na cropach twarzy przygotowanych po detekcji twarzy. W obu przypadkach celem było zminimalizowanie błędu klasyfikacji binarnej oraz uzyskanie możliwie dobrych metryk na zbiorze walidacyjnym.
 
 Proces uczenia obejmował:
 
@@ -43,6 +44,7 @@ Proces uczenia obejmował:
 
 W praktyce uczenie nie polegało więc wyłącznie na maksymalizacji wyniku na danych wewnętrznych. Ważnym elementem było sprawdzenie, czy model zachowuje się stabilnie także po pogorszeniu jakości obrazu oraz na nowych obrazach wygenerowanych przez inne narzędzia niż te obecne w głównym zbiorze danych.
 
+\newpage
 \subsection{Metryki}
 
 Podczas ewaluacji modelu raportowane są:
@@ -65,7 +67,7 @@ Weryfikacja projektu obejmowała kilka poziomów testów. Pierwszym z nich była
 \centering
 \caption{Zakres wykonanych testów i porównań}
 \label{tab:zakres-testow}
-\begin{tabular}{|p{3.5cm}|p{5.1cm}|p{5.0cm}|}
+\begin{tabular}{|L{3.5cm}|L{5.1cm}|L{5.0cm}|}
 \hline
 \textbf{Rodzaj testu} & \textbf{Co sprawdzano} & \textbf{Najważniejszy wniosek} \\
 \hline
@@ -115,7 +117,7 @@ W drugim etapie projektu przygotowano osobną ścieżkę analizy portretów i cr
     \item możliwość porównania modelu globalnego i modelu twarzowego na tym samym zbiorze portretów.
 \end{itemize}
 
-Wariant twarzowy został oparty o architekturę \texttt{ConvNeXt Tiny}. Dla curated miksu wieloźródłowego uzyskano bardzo dobre wyniki na danych zbliżonych do treningowych:
+Wariant twarzowy został oparty o architekturę \texttt{ConvNeXt Tiny}. Dla wybranego miksu wieloźródłowego uzyskano bardzo dobre wyniki na danych zbliżonych do treningowych:
 
 \begin{itemize}
     \item Accuracy: 0.9763,
@@ -152,7 +154,7 @@ Pokazuje to, że model jest już w pewnym stopniu odporny na pogorszenie jakośc
 \centering
 \caption{Wpływ degradacji jakości obrazu na wyniki modelu globalnego}
 \label{tab:robustness}
-\begin{tabular}{|p{3.5cm}|c|c|c|}
+\begin{tabular}{|L{3.5cm}|c|c|c|}
 \hline
 \textbf{Profil testowy} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{ROC-AUC} \\
 \hline
@@ -213,7 +215,7 @@ Wniosek z tego etapu jest ważny: model globalny nie zawodził głównie na nowy
 \centering
 \caption{Macierz pomyłek modelu globalnego na benchmarku OOD}
 \label{tab:confusion-global-ood}
-\begin{tabular}{|p{3.5cm}|c|c|}
+\begin{tabular}{|L{3.5cm}|c|c|}
 \hline
  & \textbf{Predykcja fake} & \textbf{Predykcja real} \\
 \hline
@@ -230,7 +232,7 @@ Macierz w tabeli \ref{tab:confusion-global-ood} potwierdza, że model globalny b
 \centering
 \caption{Porównanie modelu globalnego i twarzowego na podzbiorze OOD z wykrytą twarzą}
 \label{tab:face-global-ood}
-\begin{tabular}{|p{4.2cm}|c|c|c|}
+\begin{tabular}{|L{4.2cm}|c|c|c|}
 \hline
 \textbf{Model} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{ROC-AUC} \\
 \hline
@@ -241,7 +243,7 @@ Twarzowy po adaptacji & 0.7922 & 0.7919 & 0.8738 \\
 \end{tabular}
 \end{table}
 
-Dla 77 obrazów, na których wykryto twarz, model twarzowy po adaptacji uzyskał lepsze metryki niż model globalny. Nie oznacza to jednak pełnego rozwiązania problemu, ponieważ oba modele zgadzały się tylko dla około 61\% sparowanych próbek, a model twarzowy nadal popełniał błędy na części obrazów syntetycznych.
+Dla 77 obrazów, na których wykryto twarz, zestawiono zachowanie modelu globalnego i modelu twarzowego po adaptacji. Tego porównania nie należy interpretować jako pozytywnej oceny wariantu globalnego na portretach, ponieważ model globalny miał na tym benchmarku silną skłonność do oznaczania prawdziwych portretów jako \texttt{fake}. Wyniki pokazują raczej, że analiza portretów była problematyczna dla obu podejść: oba modele zgadzały się tylko dla około 61\% sparowanych próbek, a model twarzowy nadal popełniał błędy na części obrazów syntetycznych.
 
 \subsection{Tabela zbiorcza wyników}
 
@@ -251,7 +253,7 @@ Najważniejsze wyniki eksperymentów zestawiono w tabeli \ref{tab:wyniki-zbiorcz
 \centering
 \caption{Zbiorcze wyniki najważniejszych eksperymentów}
 \label{tab:wyniki-zbiorcze}
-\begin{tabular}{|p{4.3cm}|c|c|c|}
+\begin{tabular}{|L{4.3cm}|c|c|c|}
 \hline
 \textbf{Wariant} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{ROC-AUC} \\
 \hline
@@ -300,7 +302,7 @@ Porównanie wcześniejszych checkpointów twarzowych z benchmarkiem OOD pokazał
 
 \begin{itemize}
     \item wariant \texttt{faces\_hard\_adapt} uzyskał Accuracy około 0.48 na podzbiorze z wykrytą twarzą,
-    \item wariant \texttt{faces\_convnext\_v2} uzyskał Accuracy około 0.51 na tym samym benchmarku.
+    \item wariant \texttt{ConvNeXt v2} uzyskał Accuracy około 0.51 na tym samym benchmarku.
 \end{itemize}
 
 Oznacza to, że pierwotna wersja modelu twarzowego nie generalizowała poprawnie na najnowsze fotorealistyczne obrazy GPT / Gemini.
@@ -341,74 +343,72 @@ Interfejs ten ma charakter demonstracyjny i stanowi przydatne narzędzie do ręc
 
 \begin{figure}[H]
 \centering
-\begin{minipage}{0.48\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/real dobra klasyfikacja.png}}
-\end{minipage}
-\hfill
-\begin{minipage}{0.48\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/fake dobra klasyfikacja.png}}
-\end{minipage}
-\caption{Przykłady poprawnej klasyfikacji obrazu prawdziwego oraz obrazu wygenerowanego przez AI}
-\label{fig:web-demo-real-fake}
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/real dobra klasyfikacja.png}}
+\caption{Przykład poprawnej klasyfikacji obrazu prawdziwego}
+\label{fig:web-demo-real-correct}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\begin{minipage}{0.48\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/twarz real dobra klasfyfikacja.png}}
-\end{minipage}
-\hfill
-\begin{minipage}{0.48\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/twarz fake dobra klasyfikacja.png}}
-\end{minipage}
-\caption{Przykłady poprawnej klasyfikacji w etapie twarzowym}
-\label{fig:web-demo-face-correct}
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/fake dobra klasyfikacja.png}}
+\caption{Przykład poprawnej klasyfikacji obrazu wygenerowanego przez AI}
+\label{fig:web-demo-fake-correct}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{\detokenize{rys/twarz fake klasyfikacja real.png}}
-\caption{Przykład trudnego przypadku: obraz syntetyczny sklasyfikowany przez model twarzowy jako \texttt{real}}
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/twarz real dobra klasfyfikacja.png}}
+\caption{Przykład poprawnej klasyfikacji prawdziwego portretu w etapie twarzowym}
+\label{fig:web-demo-face-real-correct}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/twarz fake dobra klasyfikacja.png}}
+\caption{Przykład poprawnej klasyfikacji syntetycznego portretu w etapie twarzowym}
+\label{fig:web-demo-face-fake-correct}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/twarz fake klasyfikacja real.png}}
+\caption{Trudny przypadek: obraz syntetyczny sklasyfikowany przez model twarzowy jako \texttt{real}}
 \label{fig:web-demo-face-error}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/gradcam real dobra klasyfikacja.png}}
-\end{minipage}
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/gradcam fake dobra klasyfikacja.png}}
-\end{minipage}
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\textwidth]{\detokenize{rys/gradcam fake oznaczone jako real twarz.png}}
-\end{minipage}
-\caption{Przykładowe wizualizacje Grad-CAM dla poprawnych i błędnych predykcji}
-\label{fig:web-demo-gradcam}
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/gradcam real dobra klasyfikacja.png}}
+\caption[Grad-CAM dla obrazu prawdziwego]{Wizualizacja Grad-CAM dla poprawnie sklasyfikowanego obrazu prawdziwego}
+\label{fig:web-demo-gradcam-real-correct}
 \end{figure}
-
-Wizualizacje Grad-CAM z rysunku \ref{fig:web-demo-gradcam} pełnią funkcję diagnostyczną. Pozwalają sprawdzić, czy model opiera decyzję na istotnych obszarach obrazu, czy raczej reaguje na przypadkowe tło, kompresję albo inne artefakty niezwiązane bezpośrednio z twarzą lub głównym obiektem.
 
 \begin{figure}[H]
 \centering
-\begin{minipage}{0.48\textwidth}
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/gradcam fake dobra klasyfikacja.png}}
+\caption[Grad-CAM dla obrazu wygenerowanego]{Wizualizacja Grad-CAM dla poprawnie sklasyfikowanego obrazu wygenerowanego przez AI}
+\label{fig:web-demo-gradcam-fake-correct}
+\end{figure}
+
+\begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{\detokenize{rys/ostrzezenie niska rozdzielczosc.png}}
-\end{minipage}
-\hfill
-\begin{minipage}{0.48\textwidth}
+\includegraphics[width=0.88\textwidth]{\detokenize{rys/gradcam fake oznaczone jako real twarz.png}}
+\caption[Grad-CAM dla błędnej klasyfikacji]{Wizualizacja Grad-CAM dla błędnej klasyfikacji syntetycznego portretu}
+\label{fig:web-demo-gradcam-face-error}
+\end{figure}
+
+Wizualizacje Grad-CAM z rysunków \ref{fig:web-demo-gradcam-real-correct}--\ref{fig:web-demo-gradcam-face-error} pełnią funkcję diagnostyczną. Pozwalają sprawdzić, czy model opiera decyzję na istotnych obszarach obrazu, czy raczej reaguje na przypadkowe tło, kompresję albo inne artefakty niezwiązane bezpośrednio z twarzą lub głównym obiektem.
+
+\begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{\detokenize{rys/konsola.png}}
-\end{minipage}
-\caption{Ostrzeżenie o niskiej jakości obrazu oraz potwierdzenie uruchomienia aplikacji w konsoli}
-\label{fig:web-demo-quality-console}
+\includegraphics[width=0.70\textwidth]{\detokenize{rys/ostrzezenie niska rozdzielczosc.png}}
+\caption{Ostrzeżenie o niskiej jakości obrazu w interfejsie demonstracyjnym}
+\label{fig:web-demo-quality-warning}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{\detokenize{rys/konsola.png}}
+\caption{Potwierdzenie uruchomienia aplikacji w konsoli}
+\label{fig:web-demo-console}
 \end{figure}

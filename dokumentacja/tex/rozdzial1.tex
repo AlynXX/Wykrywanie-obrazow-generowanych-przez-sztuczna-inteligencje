@@ -16,6 +16,7 @@ Zakres projektu obejmuje zaprojektowanie, implementację oraz weryfikację syste
     \item przygotowanie lokalnego interfejsu demonstracyjnego do ręcznych testów i analizy wyników.
 \end{itemize}
 
+\newpage
 \subsection{Wymagania funkcjonalne}
 
 \begin{itemize}
@@ -23,7 +24,7 @@ Zakres projektu obejmuje zaprojektowanie, implementację oraz weryfikację syste
     \item konfiguracja parametrów treningu i modelu z pliku konfiguracyjnego,
     \item preprocessing obrazów oraz wdrożenie augmentacji uodparniających system na popularne degradacje jakości,
     \item trening modelu oraz zapis najlepszego checkpointu,
-    \item ewaluacja modelu i raport metryk \texttt{Accuracy}, \texttt{Precision}, \texttt{Recall}, \texttt{F1} i \texttt{ROC-AUC},
+    \item ewaluacja modelu i raport metryk: \texttt{Accuracy}, \texttt{Precision}, \texttt{Recall}, \texttt{F1} oraz \texttt{ROC-AUC},
     \item automatyczne wydzielanie rejonu twarzy i podanie go do dedykowanego modelu twarzowego,
     \item wizualizacja przesłanek decyzyjnych modelu przy użyciu map Grad-CAM \cite{selvaraju2017gradcam}.
 \end{itemize}
@@ -31,10 +32,10 @@ Zakres projektu obejmuje zaprojektowanie, implementację oraz weryfikację syste
 \subsection{Wymagania niefunkcjonalne}
 
 \begin{itemize}
-    \item przenośność --- możliwość uruchomienia na środowisku Windows/Linux,
-    \item wydajność --- wsparcie dla akceleracji GPU i rozsądny czas trenowania,
-    \item odtwarzalność --- zapisywanie konfiguracji, checkpointów i podsumowań eksperymentów,
-    \item niezawodność --- czytelne zarządzanie wyjątkami, np. w przypadku braku wykrytej twarzy,
-    \item interpretowalność --- możliwość ręcznej analizy logiki decyzyjnej modelu,
-    \item bezpieczeństwo --- lokalne przetwarzanie danych bez konieczności wysyłania obrazów do usług zewnętrznych.
+    \item przenośność - możliwość uruchomienia na środowisku Windows/Linux,
+    \item wydajność - wsparcie dla akceleracji GPU i rozsądny czas trenowania,
+    \item odtwarzalność - zapisywanie konfiguracji, checkpointów i podsumowań eksperymentów,
+    \item niezawodność - czytelne zarządzanie wyjątkami, np. w przypadku braku wykrytej twarzy,
+    \item interpretowalność - możliwość ręcznej analizy logiki decyzyjnej modelu,
+    \item bezpieczeństwo - lokalne przetwarzanie danych bez konieczności wysyłania obrazów do usług zewnętrznych.
 \end{itemize}

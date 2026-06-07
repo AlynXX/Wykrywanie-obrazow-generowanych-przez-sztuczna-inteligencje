@@ -12,6 +12,8 @@ Projekt dotyczy wykrywania, czy obraz jest prawdziwym zdjęciem, czy został wyg
 - Działa preprocessing datasetu twarzy z automatycznym cropowaniem.
 - Jest gotowa konfiguracja treningu osobnego modelu twarzowego.
 - Działa benchmark porównujący model globalny i model twarzowy na portretach.
+- Domyślny aktualny checkpoint modelu twarzowego do demo to `models/faces_convnext_v2_adapt/best_model.pt`.
+- Gotowa dokumentacja LaTeX znajduje się w katalogu `dokumentacja/`.
 
 ## Najważniejsze Wyniki
 
@@ -45,6 +47,18 @@ Wniosek praktyczny:
 - do pracy raportowej warto zachować oba wyniki, bo razem dobrze pokazują trade-off między skutecznością i odpornością.
 
 Syntetyczne podsumowanie etapu znajduje się też w `reports/PODSUMOWANIE_REAL_VS_AI.md`.
+
+## Dokumentacja Projektowa
+
+Źródła dokumentacji są w katalogu `dokumentacja/`, główny plik to `dokumentacja/dokument.tex`, a aktualny PDF to `dokumentacja/dokument.pdf`.
+Zrzuty ekranu i rysunki użyte w pracy znajdują się w `dokumentacja/rys/`.
+
+Aby przebudować dokument:
+
+```bash
+cd dokumentacja
+latexmk -pdf dokument.tex
+```
 
 ## Model
 
@@ -227,7 +241,7 @@ python -m src.train --config config_faces.yaml
 
 Aktualna konfiguracja twarzowa korzysta z `convnext_tiny`.
 Checkpointy i podsumowanie treningu dla starszej konfiguracji zapiszą się domyślnie do `models/faces_convnext/`.
-W aktualnych eksperymentach używany jest jednak nowszy wariant `ConvNeXt v2`, którego checkpoint znajduje się w `models/faces_convnext_v2/`.
+W aktualnych eksperymentach używany jest jednak nowszy wariant `ConvNeXt v2`, którego bazowy checkpoint znajduje się w `models/faces_convnext_v2/`, a checkpoint po adaptacji w `models/faces_convnext_v2_adapt/`.
 
 3a. Złożenie curated datasetu `ConvNeXt v2` z dużego, różnorodnego zbioru:
 
@@ -291,11 +305,12 @@ python -m src.train --config config_hard_fakes.yaml --init-checkpoint models/fac
 ```
 
 Ta komenda startuje od wag najlepszego modelu twarzowego, ale nie przenosi historii, optimizera ani starego `best_val_score`, więc nadaje się do czystego eksperymentu adaptacyjnego.
+Checkpoint tego opcjonalnego wariantu zapisze się do `models/faces_convnext_hard_adapt/`.
 
 7. Strojenie progu decyzyjnego dla modelu adaptacyjnego:
 
 ```bash
-python -m src.tune_threshold --checkpoint models/faces_convnext_v2_adapt/best_model.pt --config config_face_adaptation.yaml --tune-split val --eval-split test --metric f1_positive
+python -m src.tune_threshold --checkpoint models/faces_convnext_hard_adapt/best_model.pt --config config_hard_fakes.yaml --tune-split val --eval-split test --metric f1_positive
 ```
 
 Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy próg dla klasy `fake`.
@@ -303,11 +318,11 @@ Skrypt zapisze raport do `reports/threshold_tuning/` i poda najlepszy próg dla 
 8. Użycie progu w predykcji lub GUI:
 
 ```bash
-python -m src.predict --checkpoint models/faces_convnext_v2_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
+python -m src.predict --checkpoint models/faces_convnext_hard_adapt/best_model.pt --image path/to/image.jpg --threshold 0.62
 ```
 
 ```bash
-python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_v2_adapt/best_model.pt --face-threshold 0.62
+python -m src.web_demo --checkpoint models/best_model.pt --face-checkpoint models/faces_convnext_hard_adapt/best_model.pt --face-threshold 0.62
 ```
 
 9. Przygotowanie zewnętrznego benchmarku Gemini:

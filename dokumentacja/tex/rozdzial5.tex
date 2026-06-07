@@ -1,7 +1,7 @@
 \newpage
 \section{Wnioski}
 
-Projekt należy uznać za udany na poziomie inżynierskim i badawczym. Udało się zbudować kompletny pipeline do klasyfikacji obrazów \texttt{real} oraz \texttt{fake}, przygotować wariant globalny i twarzowy, wdrożyć narzędzia interpretowalności oraz przeprowadzić eksperymenty zarówno na danych wewnętrznych, jak i na małym benchmarku OOD z nowymi generatorami.
+Projekt należy uznać za udany na poziomie inżynierskim i badawczym. Udało się zbudować kompletny pipeline do klasyfikacji obrazów \texttt{real} oraz \texttt{fake}, przygotować wariant globalny i twarzowy, wdrożyć narzędzia interpretowalności oraz przeprowadzić eksperymenty zarówno na wydzielonych zbiorach testowych, jak i na małym benchmarku OOD z nowymi generatorami.
 
 Do najważniejszych osiągnięć należy zaliczyć:
 
@@ -23,21 +23,21 @@ Udało się również pokazać, że sama dokładność na klasycznym zbiorze tes
 
 \begin{table}[H]
 \centering
-\caption{Podsumowanie osiągniętych i nieosiągniętych celów}
+\caption{Podsumowanie rezultatów i najważniejszych uwag}
 \label{tab:cele-projektu}
-\begin{tabular}{|p{4.2cm}|p{5.0cm}|p{4.2cm}|}
+\begin{tabular}{|L{4.2cm}|L{5.0cm}|L{4.2cm}|}
 \hline
-\textbf{Obszar} & \textbf{Co udało się osiągnąć} & \textbf{Co pozostało ograniczeniem} \\
+\textbf{Obszar} & \textbf{Co udało się osiągnąć} & \textbf{Ograniczenia lub uwagi} \\
 \hline
 Model globalny & Wysoka skuteczność na głównym zbiorze testowym: Accuracy 0.9339 dla baseline oraz 0.9268 dla wariantu robust. & Spadek skuteczności na benchmarku OOD do Accuracy 0.7125. \\
 \hline
 Odporność na jakość obrazu & Model zachował dobrą jakość dla lekkiego rozmycia i lekkiego downscale. & Silna kompresja JPEG oraz profil \texttt{mixed\_quality} wyraźnie obniżały wyniki. \\
 \hline
-Model twarzowy & Bardzo dobry wynik na danych wewnętrznych: Accuracy 0.9763. & Słaba generalizacja pierwotnych checkpointów twarzowych na nowe generatory. \\
+Model twarzowy & Bardzo dobry wynik na wydzielonym teście portretowym: Accuracy 0.9763. & Wynik nie przenosił się automatycznie na nowe generatory spoza głównego rozkładu danych. \\
 \hline
 Adaptacja twarzowa & Poprawa po fine-tuningu na nowych cropach: Accuracy 0.8548 na teście adaptacyjnym. & Zbiór adaptacyjny był mały, więc wynik nie gwarantuje pełnej stabilności na dowolnych danych. \\
 \hline
-Interfejs demonstracyjny & Możliwość ręcznego testowania obrazów, porównania modeli i generowania Grad-CAM. & Interfejs ma charakter lokalnego demo, a nie gotowego systemu produkcyjnego. \\
+Interfejs demonstracyjny & Możliwość ręcznego testowania obrazów, porównania modeli i generowania Grad-CAM. & Interfejs spełnia założoną funkcję demonstracyjną i diagnostyczną. \\
 \hline
 \end{tabular}
 \end{table}
@@ -48,12 +48,13 @@ Jednocześnie analiza praktyczna pokazała, że nawet bardzo dobry wynik ilości
     \item nowe realistyczne portrety spoza głównego rozkładu treningowego,
     \item obrazy po silnej kompresji,
     \item najnowsze fotorealistyczne generatory obrazów,
-    \item małe zbiory adaptacyjne, które nie pozwalają jeszcze na pełną stabilizację modelu.
+    \item małe zbiory adaptacyjne, które nie pozwalają jeszcze na pełną stabilizację modelu,
+    \item ograniczona dostępność dużych, publicznych i łatwo porównywalnych zbiorów obejmujących najnowsze zamknięte generatory obrazów.
 \end{itemize}
 
 \subsection{Co było problematyczne i dlaczego}
 
-Największym problemem okazała się generalizacja, czyli przeniesienie skuteczności z danych wewnętrznych na nowe obrazy spoza głównego zbioru treningowego. Przyczyną był przede wszystkim inny rozkład danych: nowe portrety i obrazy wygenerowane przez GPT / Gemini miały inną estetykę, inne artefakty oraz często wyższą jakość wizualną niż część danych treningowych.
+Największym problemem okazała się generalizacja, czyli przeniesienie skuteczności z wydzielonych zbiorów testowych zbliżonych do danych treningowych na nowe obrazy spoza głównego rozkładu. Przyczyną był przede wszystkim inny rozkład danych: nowe portrety i obrazy wygenerowane przez GPT / Gemini miały inną estetykę, inne artefakty oraz często wyższą jakość wizualną niż część danych treningowych.
 
 Drugim problemem były fałszywe alarmy dla prawdziwych portretów. Model globalny bardzo dobrze wykrywał większość obrazów syntetycznych w benchmarku OOD, ale jednocześnie oznaczał wiele prawdziwych zdjęć jako \texttt{fake}. Możliwą przyczyną jest to, że model nauczył się traktować czyste, studyjne albo bardzo estetyczne portrety jako podejrzane, ponieważ podobne cechy często występują również w obrazach generowanych przez AI.
 
@@ -61,9 +62,11 @@ Trzecim problemem była wrażliwość na silne pogorszenie jakości obrazu. Komp
 
 Osobnym ograniczeniem był model twarzowy. Analiza samej twarzy była przydatna, ale nie wystarczyła do pełnego rozwiązania problemu. Przyczyną jest to, że crop twarzy usuwa część kontekstu obrazu, a jednocześnie wymaga poprawnej detekcji twarzy. Dodatkowo mały zbiór adaptacyjny nie dawał wystarczająco dużo przykładów, aby model stabilnie nauczył się wszystkich wariantów nowych generatorów.
 
+Istotnym ograniczeniem niezależnym od samej implementacji była także dostępność danych. Najnowsze modele generowania obrazów rozwijają się bardzo szybko, a publiczne zbiory referencyjne zwykle pojawiają się z opóźnieniem, są budowane dla innych celów albo nie obejmują dokładnie tych samych generatorów, stylów i typów obrazów, które są problematyczne w praktyce. Z tego powodu w projekcie nie dało się oprzeć oceny wyłącznie na dużym, gotowym i powszechnie uznanym benchmarku dla najnowszych modeli. Konieczne było przygotowanie własnego, mniejszego benchmarku OOD, który pozwolił sprawdzić kierunek problemu, ale nie zastępuje dużego zbioru referencyjnego.
+
 Najważniejszy wniosek metodologiczny jest następujący: model globalny stanowi mocny baseline dla fotografii i znanych danych, natomiast generalizacja na najnowsze generatory GPT / Gemini pozostaje ograniczona. W benchmarku OOD problem nie polegał wyłącznie na niewykrywaniu obrazów syntetycznych, ale również na generowaniu zbyt wielu fałszywych alarmów dla nowych prawdziwych portretów.
 
-Równie istotny jest wniosek dotyczący etapu twarzowego. Sam fakt zastosowania osobnego modelu twarzowego nie gwarantuje poprawy na nowych danych. Pierwotne checkpointy twarzowe nie generalizowały dobrze na nowe obrazy GPT / Gemini, a dopiero mała adaptacja na nowych cropach pozwoliła uzyskać poprawę na zbiorze wewnętrznym. Nadal jednak ręczne testy pokazały trudne przypadki, w których nawet adaptowany model twarzowy klasyfikował syntetyczny portret jako \texttt{real}.
+Równie istotny jest wniosek dotyczący etapu twarzowego. Sam fakt zastosowania osobnego modelu twarzowego nie gwarantuje poprawy na nowych danych. Pierwotne checkpointy twarzowe nie generalizowały dobrze na nowe obrazy GPT / Gemini, a mała adaptacja na nowych cropach poprawiła wynik na teście adaptacyjnym. Nadal jednak ręczne testy pokazały trudne przypadki, w których nawet adaptowany model twarzowy klasyfikował syntetyczny portret jako \texttt{real}.
 
 Oznacza to, że końcowy efekt pracy należy interpretować jako:
 
@@ -77,7 +80,7 @@ Oznacza to, że końcowy efekt pracy należy interpretować jako:
 W kolejnych pracach najbardziej uzasadnione byłyby:
 
 \begin{enumerate}
-    \item rozbudowanie zbioru OOD o większą liczbę obrazów z najnowszych generatorów,
+    \item rozbudowanie zbioru OOD o większą liczbę obrazów z najnowszych generatorów, najlepiej po pojawieniu się większych publicznych benchmarków dla tych modeli,
     \item przygotowanie większego i bardziej zrównoważonego zbioru adaptacyjnego dla twarzy,
     \item sprawdzenie silniejszych metod detekcji twarzy i alternatywnych strategii cropowania,
     \item dalsza analiza modeli hybrydowych, które łączą sygnał globalny i twarzowy.

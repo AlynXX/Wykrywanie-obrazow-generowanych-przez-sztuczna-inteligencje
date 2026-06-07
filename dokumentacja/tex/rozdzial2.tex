@@ -16,6 +16,7 @@ Obrazy generowane przez AI mogą zawierać artefakty trudne do uchwycenia dla cz
 
 W praktyce problem nie sprowadza się jednak tylko do znalezienia jednego modelu o wysokiej skuteczności. Istotne jest również to, czy model pozostaje odporny na pogorszenie jakości obrazu, takie jak rozmycie, kompresja JPEG czy zmniejszenie rozdzielczości. Z punktu widzenia zastosowań praktycznych właśnie te przypadki są szczególnie ważne, ponieważ obrazy rozpowszechniane w mediach społecznościowych lub komunikatorach rzadko zachowują oryginalną jakość.
 
+\newpage
 \subsection{Cel etapu bazowego}
 
 W pierwszym etapie projektu założono budowę rozwiązania, które:
@@ -37,8 +38,8 @@ W trakcie analizy problemu zidentyfikowano kilka kluczowych trudności:
 
 \begin{itemize}
     \item obrazy spoza rozkładu treningowego mogą być klasyfikowane z dużą pewnością, ale błędnie,
-    \item portrety niskiej jakości i obrazy po kompresji mogą powodować fałszywe alarmy,
-    \item ilustracje i anime nie należą do głównego zakresu modelu fotograficznego,
+    \item portrety niskiej jakości oraz obrazy po kompresji mogą powodować błędne alarmy,
+    \item ilustracje i animacje nie należą do głównego zakresu modelu fotograficznego,
     \item skuteczność mierzona na zbiorze testowym nie zawsze przekłada się wprost na zachowanie modelu na obrazach z zewnątrz.
 \end{itemize}
 
