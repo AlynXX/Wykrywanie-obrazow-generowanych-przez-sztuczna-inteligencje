@@ -15,6 +15,24 @@ Projekt dotyczy wykrywania, czy obraz jest prawdziwym zdjęciem, czy został wyg
 - Domyślny aktualny checkpoint modelu twarzowego do demo to `models/faces_convnext_v2_adapt/best_model.pt`.
 - Gotowa dokumentacja LaTeX znajduje się w katalogu `dokumentacja/`.
 
+## Podgląd Działania
+
+Ekran startowy lokalnego interfejsu demonstracyjnego:
+
+<img src="dokumentacja/rys/ekranstartowy.png" alt="Ekran startowy demo webowego" width="900">
+
+Przykład poprawnej klasyfikacji obrazu wygenerowanego przez AI:
+
+<img src="dokumentacja/rys/fake%20dobra%20klasyfikacja.png" alt="Poprawna klasyfikacja obrazu wygenerowanego przez AI" width="900">
+
+Przykład działania etapu twarzowego:
+
+<img src="dokumentacja/rys/twarz%20fake%20dobra%20klasyfikacja.png" alt="Poprawna klasyfikacja syntetycznego portretu w etapie twarzowym" width="900">
+
+Przykład wizualizacji Grad-CAM:
+
+<img src="dokumentacja/rys/gradcam%20fake%20dobra%20klasyfikacja.png" alt="Wizualizacja Grad-CAM dla obrazu wygenerowanego przez AI" width="900">
+
 ## Najważniejsze Wyniki
 
 Najlepszy dotychczasowy baseline na zbiorze testowym:
